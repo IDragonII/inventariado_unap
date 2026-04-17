@@ -615,7 +615,10 @@ const guardarEntrega = async () => {
       observaciones: observaciones.value,
       observacionesActivos: observacionesActivos.value,
       activos: activosFiltrados.value.map(activo => ({
-        ...activo,
+        id: activo.id,
+        area: {
+          id: activo.area_obj?.id
+        },
         observaciones: observacionesActivos.value[activo.id] || ''
       })),
       usuario: {
@@ -627,6 +630,7 @@ const guardarEntrega = async () => {
       auto_autorizar: true
     }
     console.log('heres', oficinaUsuarioSeleccionada.value)
+    console.log('usuarioEntrega:', usuarioEntrega.value)
     const response = await http.value.post('/otp/entregas', data)  // ← CAMBIADO
     $q.notify({
       type: 'positive',

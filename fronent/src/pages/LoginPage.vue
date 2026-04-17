@@ -683,27 +683,34 @@ const consultarActivos = async () => {
   console.log('LISTA:', res.data)
 
   console.log('LENGTH:', res.data?.length)
+  console.log('RES COMPLETO:', res)
 
-
-
-  listaActivos.value = res.data ?? []
+  //listaActivos.value = res.data ?? []
 
   paginacionConsulta.value.rowsNumber = listaActivos.value.length
 
-  responsableNombre.value = res.responsable ?? 'Usuario'
+  //responsableNombre.value = res.responsable ?? 'Usuario'
 
 
 
-  usuarioOtp.value = {
-    id: res.id,
-    nombre: res.responsable ?? 'Usuario',
+  //usuarioOtp.value = {
+   // id: res.id,
+   // nombre: res.responsable ?? 'Usuario',
 
-    dni: formConsulta.value.dni,
+  //  dni: formConsulta.value.dni,
 
-    oficinas: res.oficinas ?? []
+   // oficinas: res.oficinas ?? []
 
-  }
+  //}
+listaActivos.value = res.data ?? []
+responsableNombre.value = res.responsable ?? 'Usuario'
 
+usuarioOtp.value = {
+  id: res.id,
+  nombre: res.responsable ?? 'Usuario',
+  dni: formConsulta.value.dni,
+  oficinas: res.oficinas ?? []
+}
 
 
   console.log('listaActivos:', listaActivos.value)

@@ -1188,6 +1188,7 @@ public function consultarPorDni(Request $request)
 
     return response()->json([
         'success'    => true,
+        'id' => $user->id,
         'responsable'=> $user->name,
         'data'       => $activos
     ]);
