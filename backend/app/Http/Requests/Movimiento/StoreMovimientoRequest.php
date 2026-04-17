@@ -91,18 +91,27 @@ class StoreMovimientoRequest extends FormRequest
     }
 
     protected function withValidator($validator)
-    {
-        $validator->after(function ($validator) {
-            foreach ($this->input('activos', []) as $i => $activo) {
-                $movimientoActivo = \App\Models\Inventariado\MovimientoActivo::where('activo_id', $activo['id'])
-                    ->orderByDesc('created_at')
-                    ->first();
+{
+    $validator->after(function ($validator) {
+        foreach ($this->input('activos', []) as $i => $activo) {
+            // USAR ?? NULL PARA EVITAR EL ERROR FATAL
+            $activoId = $activo['id'] ?? null;
 
-                if ($movimientoActivo && in_array($movimientoActivo->estado, ['pendiente', 'en_entrega'])) {
-                    $validator->errors()->add("activos.$i", "El activo ya tiene un movimiento pendiente o entregado que debe ser recibido o rechazado antes de crear uno nuevo.");
-                }
+            if (!$activoId) {
+                // Si no hay ID, no ejecutamos esta lógica. 
+                // La regla 'activos.*.id' => 'required' ya marcará el error.
+                continue; 
             }
-        });
-    }
+
+            $movimientoActivo = \App\Models\Inventariado\MovimientoActivo::where('activo_id', $activoId)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($movimientoActivo && in_array($movimientoActivo->estado, ['pendiente', 'en_entrega'])) {
+                $validator->errors()->add("activos.$i", "El activo ya tiene un movimiento pendiente.");
+            }
+        }
+    });
+}
 } 
 

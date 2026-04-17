@@ -114,4 +114,24 @@ class UsersController extends Controller
         $user->load('role');
         return $this->successResponse(new UserResource($user), 'Rol asignado correctamente');
     }
+    public function buscar(Request $request): JsonResponse
+{
+    try {
+        $search = $request->get('dni', '');
+
+        $users = User::with(['role', 'oficinas'])
+            ->where(function($q) use ($search) {
+                $q->where('dni', 'like', "%$search%")
+                  ->orWhere('name', 'like', "%$search%");
+            })
+            ->take(10)
+            ->get();
+
+        return response()->json(UserResource::collection($users));
+
+    } catch (\Exception $e) {
+        \Log::error('Error al buscar usuario: ' . $e->getMessage());
+        return response()->json(['error' => 'Error al buscar'], 500);
+    }
+}
 }

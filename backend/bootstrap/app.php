@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'permission' => \App\Http\Middleware\PermissionMiddleware::class,
             'otp' => \App\Http\Middleware\OtpMiddleware::class,
+            'ability'    => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+            'abilities'  => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
 
         ]);
     })

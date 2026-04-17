@@ -1173,6 +1173,7 @@ public function consultarPorDni(Request $request)
         ->whereNull('deleted_at')
         ->get()
         ->map(fn($a) => [
+            'id'           => $a->id,
             'codigo'       => $a->codigo,
             'denominacion' => $a->denominacion,
             'marca'        => $a->marca,
@@ -1182,6 +1183,7 @@ public function consultarPorDni(Request $request)
             'condicion'    => $a->condicion,
             'oficina'      => $a->area?->oficina?->denominacion,
             'area'         => $a->area?->aula,
+            'area_obj'     => $a->area,
         ]);
 
     return response()->json([

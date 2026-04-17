@@ -44,40 +44,56 @@ class OtpController extends Controller
 }
 
     public function verificar(Request $request)
-    {
-        $request->validate([
-            'correo' => 'required|email',
-            'dni' => 'required',
-            'otp' => 'required'
-        ]);
+{
+    $request->validate([
+        'correo' => 'required|email',
+        'dni'    => 'required',
+        'otp'    => 'required'
+    ]);
 
-        $otp = Otp::where('dni', $request->dni)
-            ->where('email', $request->correo)
-            ->where('code', $request->otp)
-            ->first();
+    $otp = Otp::where('dni', $request->dni)
+        ->where('email', $request->correo)
+        ->where('code', $request->otp)
+        ->first();
 
-        if (!$otp) {
-            return response()->json([
-                'message' => 'Código incorrecto'
-            ], 400);
-        }
-
-        if (now()->greaterThan($otp->expires_at)) {
-            return response()->json([
-                'message' => 'Código expirado'
-            ], 400);
-        }
-
-        $otp->delete();
-
-        $token = Str::random(60);
-
-        cache()->put('otp_token_'.$token, [
-            'dni' => $request->dni
-        ], now()->addMinutes(15));
-
-        return response()->json([
-            'token' => $token
-        ]);
+    if (!$otp) {
+        return response()->json(['message' => 'Código incorrecto'], 400);
     }
+
+    if (now()->greaterThan($otp->expires_at)) {
+        return response()->json(['message' => 'Código expirado'], 400);
+    }
+
+    $otp->delete();
+
+    // Buscar el usuario por DNI
+    $user = \App\Models\User::where('dni', $request->dni)->first();
+
+    if (!$user) {
+        return response()->json(['message' => 'Usuario no encontrado'], 404);
+    }
+
+    // Revocar tokens OTP anteriores del mismo usuario
+    $user->tokens()->where('name', 'otp-token')->delete();
+
+    // Crear token temporal con habilidades limitadas (expira en 2 horas)
+    $tokenTemporal = $user->createToken(
+        'otp-token',
+        ['consultar-activos', 'buscar-usuarios', 'buscar-oficinas', 'buscar-areas', 'crear-entrega'],
+        now()->addHours(2)
+    )->plainTextToken;
+
+    return response()->json([
+        'token_temporal' => $tokenTemporal,
+        'usuario' => [
+            'id'      => $user->id,
+            'nombre'  => $user->name,
+            'dni'     => $user->dni,
+            'oficinas' => $user->oficinas->map(fn($o) => [
+                'id'     => $o->id,
+                'nombre' => $o->denominacion
+            ])
+        ]
+    ]);
+}
 }

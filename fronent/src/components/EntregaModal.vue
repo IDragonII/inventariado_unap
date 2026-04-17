@@ -156,8 +156,6 @@
                     <div v-if="oficinaUsuarioSeleccionada">
                       <strong>Oficina:</strong> {{ oficinaUsuarioSeleccionada.nombre }}
                     </div>
-                    <!-- <div><strong>Unidades de Alta Dirección/Entidad:</strong> {{ usuarioEntrega?.entidad }}</div> -->
-                    <!-- <div><strong>Oficina:</strong> {{ usuarioEntrega?.oficina }}</div> -->
                   </div>
                 </div>
 
@@ -193,8 +191,18 @@
                     :columns="[
                       { name: 'codigo', label: 'Codigo', field: row => row.codigo, align: 'left' },
                       { name: 'denominacion', label: 'Denominación', field: row => row.denominacion, align: 'left' },
-                      { name: 'oficina', label: 'Oficina', field: row => row.area?.oficina?.denominacion, align: 'left' },
-                      { name: 'area', label: 'Area', field: row => `${row.area?.aula || ''}`, align: 'left' },
+                      {
+  name: 'oficina',
+  label: 'Oficina',
+  field: row =>
+    row.area?.oficina?.denominacion || row.oficina || 'Sin oficina'
+},
+{
+  name: 'area',
+  label: 'Área',
+  field: row =>
+    row.area?.aula || row.area || 'Sin área'
+},
                       { name: 'estado', label: 'Estado', field: 'estado', align: 'center' },
                       { name: 'observaciones', label: 'Observaciones', field: row => observacionesActivos[row.id] || 'Sin observaciones', align: 'left' }
                     ]"
@@ -294,29 +302,41 @@
 <script setup>
 import { ref, defineProps, defineEmits, onMounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
+// DESPUÉS
 import { authService } from '../services/authService'
 import { activoService } from 'src/services/activoService'
-import { areaService } from 'src/services/areaService'
-import { oficinaService } from 'src/services/oficinaService'
-
+import { httpClient as httpClientBase } from 'boot/axios'  // ← renombrado para evitar colisión
 const oficinaUsuarioSeleccionada = ref(null)
 const activosFiltrados = computed(() => {
-  console.log(props.activos, oficinaUsuarioSeleccionada.value)
   if (!oficinaUsuarioSeleccionada.value?.id) return []
+
+  const idSeleccionado = oficinaUsuarioSeleccionada.value.id
+  // También obtenemos el nombre para comparar por texto si el ID falla
+  const nombreSeleccionado = oficinaUsuarioSeleccionada.value.label || oficinaUsuarioSeleccionada.value.nombre
+
   return props.activos.filter(activo => {
-    return activo.area?.oficina?.id === oficinaUsuarioSeleccionada.value.id
+    // 1. Intentamos por ID (flujo normal)
+    const oficinaId = activo.area?.oficina?.id || activo.oficina_id
+    
+    // 2. Intentamos por Nombre (flujo público/DNI donde 'oficina' es String)
+    const nombreOficinaActivo = typeof activo.oficina === 'string' ? activo.oficina.trim() : ''
+    const nombreOficinaSel = nombreSeleccionado ? nombreSeleccionado.trim() : ''
+
+    return (oficinaId === idSeleccionado) || 
+           (nombreOficinaActivo !== '' && nombreOficinaActivo === nombreOficinaSel)
   })
 })
+
 const props = defineProps({
-  show: {
-    type: Boolean,
-    required: true
-  },
-  activos: {
-    type: Array,
-    required: true
-  }
+  show:          { type: Boolean, required: true },
+  activos:       { type: Array,   required: true },
+  modoPublico:   { type: Boolean, default: false },        // ← AGREGADO
+  usuarioPublico:{ type: Object,  default: null },         // ← AGREGADO
+  httpClient:    { type: Object,  default: null }          // ← AGREGADO
 })
+
+// Cliente dinámico: usa el temporal si existe, sino el normal
+const http = computed(() => props.httpClient || httpClientBase)
 
 const emit = defineEmits(['update:show', 'guardar', watch])
 const $q = useQuasar()
@@ -333,7 +353,9 @@ const usuarioEntrega = ref(null)
 const pdfUrl = ref(null)
 
 const search_oficina = async (val, update) => {
-  const oficinas = await oficinaService.getOficinaSearch({ search: val })
+  const response = await http.value.get(`/otp/oficinas/buscar?search=${val}`)
+  const oficinas = response.data  // ← directo, sin .data.data
+
   update(() => {
     usuarioEntrega.value.oficinas = oficinas.map(oficina => ({
       id: oficina.id,
@@ -383,7 +405,9 @@ const buscarReceptor = async () => {
 
   loading.value = true
   try {
-    const response = await authService.getUsuarios(dniSearch.value)
+    const response = await http.value.get(     // ← CAMBIADO
+      `/otp/usuarios/buscar?dni=${dniSearch.value}`
+    )
     console.log(response)
     if (response) {
       receptor.value = {
@@ -420,7 +444,9 @@ const cargarUbicaciones = async (newDepartamentoId) => {
       ubicaciones.value = []
       return
     }
-    const response = await areaService.getAreas({ oficinas: newDepartamentoId })
+    const response = await http.value.get(     // ← CAMBIADO
+      `/otp/areas?oficinas=${newDepartamentoId}`
+    )
     console.log(response)
     ubicaciones.value = response.data.map(ubic => ({
       label: `${ubic.codigo} - ${ubic.aula}`,
@@ -461,17 +487,14 @@ const validarEntrega = () => {
     })
     return false
   }
-  //const receptorTieneAcceso = receptor.value.oficinas.some(
-  //  oficina => oficina.id === oficinaUsuarioSeleccionada.value.id
-  //)
 
   if (!cambiarUbicacion.value && receptor.value.oficinaSeleccionada?.id !== oficinaUsuarioSeleccionada.value?.id) {
-  $q.notify({
-    type: 'negative',
-    message: 'El receptor debe pertenecer al mismo departamento que el usuario que entrega'
-  })
-  return false
-}
+    $q.notify({
+      type: 'negative',
+      message: 'El receptor debe pertenecer al mismo departamento que el usuario que entrega'
+    })
+    return false
+  }
 
   // No permitir entregar activos con movimiento pendiente o entregado
   const activosInvalidos = props.activos.filter(activo => {
@@ -595,10 +618,6 @@ const guardarEntrega = async () => {
         ...activo,
         observaciones: observacionesActivos.value[activo.id] || ''
       })),
-      //activos: props.activos.map(activo => ({
-      //  ...activo,
-      //  observaciones: observacionesActivos.value[activo.id] || ''
-      //})),
       usuario: {
         id: usuarioEntrega.value.id,
         dni: usuarioEntrega.value.dni,
@@ -608,7 +627,7 @@ const guardarEntrega = async () => {
       auto_autorizar: true
     }
     console.log('heres', oficinaUsuarioSeleccionada.value)
-    const response = await activoService.createEntrega(data)
+    const response = await http.value.post('/otp/entregas', data)  // ← CAMBIADO
     $q.notify({
       type: 'positive',
       message: 'Entrega realizada con éxito'
@@ -627,16 +646,23 @@ const guardarEntrega = async () => {
 }
 
 onMounted(() => {
-  cargarUsuarioEntrega()
-  //props.activos.forEach(activo => {
-  //  observacionesActivos.value[activo.id] = ''
-  //})
+  // ← CAMBIADO: condicional según modoPublico
+  if (props.modoPublico && props.usuarioPublico) {
+    usuarioEntrega.value = {
+      id:      props.usuarioPublico.id ?? null,
+      nombre:  props.usuarioPublico.nombre,
+      dni:     props.usuarioPublico.dni,
+      oficinas: props.usuarioPublico.oficinas ?? []
+    }
+  } else {
+    cargarUsuarioEntrega()
+  }
+
   watch(oficinaUsuarioSeleccionada, (nuevaOficina) => {
     if (nuevaOficina) {
       activosFiltrados.value.forEach(activo => {
         observacionesActivos.value[activo.id] = activo.observaciones || ''
       })
-      //cargarUbicaciones(nuevaOficina.id)
     }
   }, { immediate: true });
 })

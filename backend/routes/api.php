@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UsersController;
+use App\Http\Controllers\Inventariado\EntregaController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Inventariado\ActivosController;
 use App\Http\Controllers\Inventariado\ProveedorController;
@@ -242,3 +243,13 @@ Route::post('/otp/solicitar', [\App\Http\Controllers\Api\OtpController::class, '
 Route::post('/otp/verificar', [\App\Http\Controllers\Api\OtpController::class, 'verificar']);
 Route::post('/movimiento-otp', [MovimientoController::class, 'store'])
     ->middleware('otp');
+Route::middleware(['auth:sanctum'])->prefix('otp')->group(function () {
+    Route::get('/usuarios/buscar',  [UsersController::class, 'buscar'])
+        ->middleware('ability:buscar-usuarios');
+    Route::get('/oficinas/buscar',  [OficinaController::class, 'buscarPublico'])
+        ->middleware('ability:buscar-oficinas');
+    Route::get('/areas',            [AreaController::class, 'index'])
+        ->middleware('ability:buscar-areas');
+    Route::post('/entregas', [MovimientoController::class, 'store'])
+        ->middleware('ability:crear-entrega');
+});
