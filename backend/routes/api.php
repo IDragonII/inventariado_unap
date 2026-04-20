@@ -253,3 +253,4 @@ Route::middleware(['auth:sanctum'])->prefix('otp')->group(function () {
     Route::post('/entregas', [MovimientoController::class, 'store'])
         ->middleware('ability:crear-entrega');
 });
+Route::get('/activos/consultar-por-codigo/{codigo}', [ActivosController::class, 'consultarPorCodigo']);

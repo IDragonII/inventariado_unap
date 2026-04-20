@@ -1190,4 +1190,27 @@ public function consultarPorDni(Request $request)
         'data'       => $activos
     ]);
 }
+public function consultarPorCodigo($codigo)
+{
+    $activo = Activo::with(['area.oficina', 'responsable'])
+        ->where('codigo', $codigo)
+        ->whereNull('deleted_at')
+        ->first();
+
+    if (!$activo) {
+        return response()->json(['message' => 'Activo no encontrado'], 404);
+    }
+
+    return response()->json([
+        'codigo'        => $activo->codigo,
+        'denominacion'  => $activo->denominacion,
+        'responsable'   => $activo->responsable?->name ?? 'Sin responsable',
+        'oficina'       => $activo->area?->oficina?->denominacion ?? 'Sin oficina',
+        'area'          => $activo->area?->aula ?? 'Sin área',
+        'estado'        => $activo->estado,
+        'estado_display'=> $activo->estado_display,
+        'condicion'     => $activo->condicion,
+        'condicion_display' => $activo->condicion_display,
+    ]);
+}
 }

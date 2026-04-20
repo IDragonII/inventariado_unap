@@ -126,8 +126,20 @@
                       </template>
 
                     </q-input>
-
-
+                    <!-- Solo aparece si no tiene correo registrado -->
+    <q-input
+      v-if="requiereCorreo"
+      v-model="correoManual"
+      label="Correo institucional (@unap.edu.pe)"
+      outlined dense
+      type="email"
+      :rules="[
+        v => !!v || 'Requerido',
+        v => v.endsWith('@unap.edu.pe') || 'Solo correos @unap.edu.pe'
+      ]"
+    >
+      <template #prepend><q-icon name="email" /></template>
+    </q-input>
 
                     <q-btn label="Enviar código" color="primary" class="full-width" :loading="loadingOtp"
                       @click="enviarOtp" />
@@ -137,9 +149,80 @@
                 </q-card>
 
               </q-expansion-item>
+<!-- CONSULTA POR CÓDIGO DE ACTIVO -->
+<q-expansion-item
+  icon="inventory_2"
+  label="Consultar activo por código"
+  class="q-mt-sm"
+  dense
+>
+  <q-card flat bordered>
+    <q-card-section class="q-gutter-sm">
 
+      <q-input
+        v-model="codigoActivo"
+        label="Código del activo"
+        outlined dense
+        @keyup.enter="buscarActivo"
+      >
+        <template #prepend>
+          <q-icon name="qr_code" />
+        </template>
+      </q-input>
 
+      <q-btn
+        label="Buscar"
+        color="primary"
+        class="full-width"
+        :loading="loadingBusqueda"
+        @click="buscarActivo"
+      />
 
+      <div v-if="errorBusqueda" class="text-negative text-caption">
+        {{ errorBusqueda }}
+      </div>
+
+    </q-card-section>
+  </q-card>
+</q-expansion-item>
+
+<!-- MODAL RESULTADO ACTIVO -->
+<q-dialog v-model="dialogActivo">
+  <q-card style="min-width: 380px">
+
+    <q-card-section class="bg-primary text-white row items-center">
+      <q-icon name="inventory_2" class="q-mr-sm" />
+      <div class="text-h6">Detalle del Activo</div>
+      <q-space />
+      <q-btn icon="close" flat round dense v-close-popup />
+    </q-card-section>
+
+    <q-card-section v-if="resultadoActivo" class="q-gutter-y-sm">
+      <div class="text-subtitle1 text-primary text-weight-bold">
+        {{ resultadoActivo.denominacion }}
+      </div>
+      <q-separator />
+      <div class="row q-col-gutter-sm">
+        <div class="col-6"><strong>Código:</strong></div>
+        <div class="col-6">{{ resultadoActivo.codigo }}</div>
+
+        <div class="col-6"><strong>Responsable:</strong></div>
+        <div class="col-6">{{ resultadoActivo.responsable }}</div>
+
+        <div class="col-6"><strong>Oficina:</strong></div>
+        <div class="col-6">{{ resultadoActivo.oficina }}</div>
+
+        <div class="col-6"><strong>Área:</strong></div>
+        <div class="col-6">{{ resultadoActivo.area }}</div>
+      </div>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="Cerrar" color="primary" v-close-popup />
+    </q-card-actions>
+
+  </q-card>
+</q-dialog>
             </div>
 
           </div>
@@ -313,6 +396,8 @@ const otpDialog = ref(false)
 const loadingOtp = ref(false)
 
 const verificandoOtp = ref(false)
+const requiereCorreo = ref(false)
+const correoManual = ref('')
 
 
 
@@ -341,12 +426,18 @@ const tokenTemporal = ref(null)
 const usuarioOtp = ref(null)
 
 const httpClientOtp = ref(null)
+const codigoActivo    = ref('')
+const loadingBusqueda = ref(false)
+const resultadoActivo = ref(null)
+const errorBusqueda   = ref('')
+
 
 
 
 // OTP TEMP DATA
 
 const otpSession = ref(null)
+const dialogActivo = ref(false)
 
 const paginacionConsulta = ref({
 
@@ -417,62 +508,57 @@ function getCondicionColor(condicion) {
 }
 
 
-
+const buscarActivo = async () => {
+  if (!codigoActivo.value) {
+    return $q.notify({ type: 'warning', message: 'Ingresa un código' })
+  }
+  loadingBusqueda.value = true
+  resultadoActivo.value = null
+  errorBusqueda.value   = ''
+  try {
+    const res = await httpClient.get(`/activos/consultar-por-codigo/${codigoActivo.value}`)
+    resultadoActivo.value = res
+    dialogActivo.value = true  // ← abre el modal
+  } catch (err) {
+    errorBusqueda.value = err.response?.data?.message || 'Activo no encontrado'
+  } finally {
+    loadingBusqueda.value = false
+  }
+}
 // ─── OTP ──────────────────────────────────────────────────────────────────────
 
 
 
 const enviarOtp = async () => {
-
-
-  loadingOtp.value = true
-
-  try {
-
-    const res = await httpClient.post('/otp/solicitar', {
-
-      dni: formConsulta.value.dni
-
-    })
-
-
-
-    const sessionId =
-
-      res?.session_id ??
-
-      res?.data?.session_id ??
-
-      res?.data?.data?.session_id
-
-
-
-    otpSession.value = sessionId
-
-    otpDialog.value = true
-
-
-
-    $q.notify({ type: 'positive', message: 'Código enviado al correo' })
-
-  } catch (err) {
-
-    console.log('ERROR OTP:', err.response?.data || err)
-
-    $q.notify({
-
-      type: 'negative',
-
-      message: err.response?.data?.message || err.message
-
-    })
-
-  } finally {
-
-    loadingOtp.value = false
-
+  if (!formConsulta.value.dni) {
+    return $q.notify({ type: 'warning', message: 'Ingresa tu DNI' })
+  }
+  // Si ya sabe que requiere correo, validarlo
+  if (requiereCorreo.value && !correoManual.value) {
+    return $q.notify({ type: 'warning', message: 'Ingresa un correo' })
   }
 
+  loadingOtp.value = true
+  try {
+    const payload = { dni: formConsulta.value.dni }
+    if (requiereCorreo.value) payload.correo = correoManual.value
+
+    const res = await httpClient.post('/otp/solicitar', payload)
+
+    if (res?.requiere_correo) {
+      requiereCorreo.value = true
+      $q.notify({ type: 'warning', message: 'No tienes correo registrado, ingresa uno para recibir el código' })
+      return
+    }
+
+    otpSession.value = res?.session_id ?? res?.data?.session_id
+    otpDialog.value = true
+    $q.notify({ type: 'positive', message: 'Código enviado al correo' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.response?.data?.message || 'Error al enviar código' })
+  } finally {
+    loadingOtp.value = false
+  }
 }
 
 
