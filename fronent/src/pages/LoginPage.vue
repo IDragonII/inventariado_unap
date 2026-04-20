@@ -410,9 +410,9 @@ import TableDynamic from 'src/components/TableDynamic.vue'
 
 import EntregaModal from 'src/components/EntregaModal.vue'
 
-import { httpClient } from 'boot/axios'
-
 import { AxiosAdapter } from 'src/adapters/AxiosAdapter'
+
+import { httpClient } from '../boot/axios'
 
 
 

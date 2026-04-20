@@ -12,37 +12,35 @@ class MovimientoResource extends JsonResource
         return [
             'id' => $this->id,
             'codigo' => $this->codigo,
-            'usuario' => [
+            'usuario' => $this->usuario ? [
                 'id' => $this->usuario->id,
                 'nombre' => $this->usuario->name,
                 'oficina' => $this->usuario->oficina ? $this->usuario->oficina->denominacion : 'N/A',
                 'entidad' => $this->usuario->oficina && $this->usuario->oficina->entidad ? $this->usuario->oficina->entidad->denominacion : 'N/A'
-            ],
-            'receptor' => [
+            ] : null,
+            'receptor' => $this->receptor ? [
                 'id' => $this->receptor->id,
                 'nombre' => $this->receptor->name,
                 'oficina' => $this->receptor->oficina ? $this->receptor->oficina->denominacion : 'N/A',
                 'entidad' => $this->receptor->oficina && $this->receptor->oficina->entidad ? $this->receptor->oficina->entidad->denominacion : 'N/A'
-            ],
+            ] : null,
             'fecha_movimiento' => $this->fecha_movimiento,
             'fecha_entrega' => $this->fecha_entrega,
             'fecha_recepcion' => $this->fecha_recepcion,
             'estado' => $this->estado,
-            //'ubicacion_destino_id' => $this->ubicacion_destino_id,
-            //'observaciones_entrega' => $this->observaciones_entrega,
             'observaciones_recepcion' => $this->observaciones_recepcion,
             'autorizado_por' => $this->whenLoaded('autorizadoPor', function () {
-                return [
+                return $this->autorizadoPor ? [
                     'id' => $this->autorizadoPor->id,
                     'nombre' => $this->autorizadoPor->name
-                ];
+                ] : null;
             }),
             'activos' => $this->whenLoaded('movimientosActivos', function () {
                 return $this->movimientosActivos->map(function ($movimientoActivo) {
                     return [
                         'id' => $movimientoActivo->activo->id,
                         'codigo' => $movimientoActivo->activo->codigo,
-                        'nombre' => $movimientoActivo->activo->nombre,
+                        'nombre' => $movimientoActivo->activo->nombre ?? $movimientoActivo->activo->denominacion,
                         'descripcion' => $movimientoActivo->activo->descripcion,
                         'marca' => $movimientoActivo->activo->marca,
                         'modelo' => $movimientoActivo->activo->modelo,

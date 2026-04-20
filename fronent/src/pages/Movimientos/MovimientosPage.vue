@@ -224,6 +224,10 @@ const descargarPDF = async (movimientoId) => {
 }
 
 const mostrarAccionAutorizador = (row) => {
+  // Admin puede autorizar cualquier movimiento pendiente sin autorizado_por
+  if (auth.isAdmin && row.estado === 'pendiente' && !row.autorizado_por) {
+    return true
+  }
   return row.estado === 'pendiente' && row.autorizado_por?.id === auth.user?.id
 }
 const mostrarAccionReceptor = (row) => {

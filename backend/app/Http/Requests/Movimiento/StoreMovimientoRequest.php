@@ -15,7 +15,9 @@ class StoreMovimientoRequest extends FormRequest
 
     public function rules()
     {
-        return [
+        $dniOtp = $this->input('dni_otp');
+        
+        $rules = [
             'activos' => 'required|array|min:1',
             'activos.*.id' => 'required|exists:activos,id',
             'activos.*.observaciones' => 'nullable|string',
@@ -25,21 +27,33 @@ class StoreMovimientoRequest extends FormRequest
             'receptor.nombre' => 'required|string',
             'receptor.dni' => 'required|string',
             'receptor.oficina' => 'required|string',
-            //'receptor.entidad' => 'required|string',
-            'usuario' => 'required|array',
-            'usuario.id' => 'required|exists:users,id',
-            'usuario.nombre' => 'required|string',
-            'usuario.dni' => 'required|string',
-            'usuario.oficina' => 'required|string',
-            //'usuario.entidad' => 'required|string',
             'observaciones' => 'nullable|string',
             'cambiarUbicacion' => 'required|boolean',
             'ubicacion' => 'required_if:cambiarUbicacion,true',
             'ubicacion.value' => 'required_if:cambiarUbicacion,true|exists:areas,id',
             'ubicacion.label' => 'required_if:cambiarUbicacion,true|string',
             'ubicacion_origen_id' => 'required|exists:oficinas,id',
-            'ubicacion_destino_id' => 'required|exists:oficinas,id'
+            'ubicacion_destino_id' => 'required|exists:oficinas,id',
+            'dni_otp' => 'nullable|string'
         ];
+
+        // Si es modo OTP (sin login), el usuario puede ser null o no existir como ID
+        if ($dniOtp) {
+            $rules['usuario'] = 'required|array';
+            $rules['usuario.dni'] = 'required|string';
+            $rules['usuario.nombre'] = 'required|string';
+            $rules['usuario.oficina'] = 'required|string';
+            // usuario.id puede ser null en modo OTP
+            $rules['usuario.id'] = 'nullable';
+        } else {
+            $rules['usuario'] = 'required|array';
+            $rules['usuario.id'] = 'required|exists:users,id';
+            $rules['usuario.nombre'] = 'required|string';
+            $rules['usuario.dni'] = 'required|string';
+            $rules['usuario.oficina'] = 'required|string';
+        }
+
+        return $rules;
     }
 
     public function messages()

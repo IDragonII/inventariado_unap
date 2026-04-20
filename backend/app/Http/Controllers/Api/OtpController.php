@@ -32,10 +32,16 @@ class OtpController extends Controller
         'session_id' => $sessionId
     ]);
 
-    Mail::raw("Tu código OTP es: $codigo", function ($msg) use ($request) {
-        $msg->to($request->correo)
-            ->subject('Código OTP');
-    });
+    Mail::html(
+        view('emails.otp', [
+            'codigo'  => $codigo,
+            'nombre'  => $user->name ?? 'Usuario',  // si tienes el usuario en ese punto
+        ])->render(),
+        function ($msg) use ($request) {
+            $msg->to($request->correo)
+                ->subject('Código de verificación - UNAP');
+        }
+    );
 
     return response()->json([
         'message' => 'Código enviado al correo',

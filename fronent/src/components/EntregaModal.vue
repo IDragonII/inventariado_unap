@@ -617,7 +617,7 @@ const guardarEntrega = async () => {
       activos: activosFiltrados.value.map(activo => ({
         id: activo.id,
         area: {
-          id: activo.area_obj?.id
+          id: activo.area_obj?.id || activo.area?.id
         },
         observaciones: observacionesActivos.value[activo.id] || ''
       })),
