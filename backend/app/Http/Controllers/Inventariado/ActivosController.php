@@ -1145,7 +1145,6 @@ public function eliminarExport(int $id)
 public function consultarPorDni(Request $request)
 {
     $validator = Validator::make($request->all(), [
-        'correo' => 'required|email|exists:users,email',
         'dni'    => 'required|string|size:8|exists:users,dni',
     ]);
 
@@ -1157,9 +1156,7 @@ public function consultarPorDni(Request $request)
         ], 422);
     }
 
-    $user = User::where('email', $request->correo)
-                ->where('dni', $request->dni)
-                ->first();
+    $user = User::where('dni', $request->dni)->first();
 
     if (!$user) {
         return response()->json([

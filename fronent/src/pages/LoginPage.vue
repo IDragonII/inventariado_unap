@@ -108,19 +108,8 @@
 
               <!-- CONSULTA -->
 
-              <q-expansion-item
-
-                v-model="panelAbierto"
-
-                icon="search"
-
-                label="Consultar mis activos"
-
-                class="q-mt-md"
-
-                dense
-
-              >
+              <q-expansion-item v-model="panelAbierto" icon="search" label="Consultar mis activos" class="q-mt-md"
+                dense>
 
                 <q-card flat bordered>
 
@@ -128,37 +117,7 @@
 
 
 
-                    <q-input
-
-                      v-model="formConsulta.correo"
-
-                      label="Correo"
-
-                      outlined dense
-
-                      :rules="[v => !!v || 'Requerido', v => v.endsWith('@est.unap.edu.pe') || 'Solo correos @est.unap.edu.pe']"
-
-                    >
-
-                      <template #prepend>
-
-                        <q-icon name="email" />
-
-                      </template>
-
-                    </q-input>
-
-
-
-                    <q-input
-
-                      v-model="formConsulta.dni"
-
-                      label="DNI"
-
-                      outlined dense maxlength="8"
-
-                    >
+                    <q-input v-model="formConsulta.dni" label="DNI" outlined dense maxlength="8">
 
                       <template #prepend>
 
@@ -170,19 +129,8 @@
 
 
 
-                    <q-btn
-
-                      label="Enviar código"
-
-                      color="primary"
-
-                      class="full-width"
-
-                      :loading="loadingOtp"
-
-                      @click="enviarOtp"
-
-                    />
+                    <q-btn label="Enviar código" color="primary" class="full-width" :loading="loadingOtp"
+                      @click="enviarOtp" />
 
                   </q-card-section>
 
@@ -224,33 +172,11 @@
 
 
 
-          <q-input
-
-            v-model="otpCode"
-
-            label="Código OTP"
-
-            outlined dense
-
-            maxlength="6"
-
-          />
+          <q-input v-model="otpCode" label="Código OTP" outlined dense maxlength="6" />
 
 
 
-          <q-btn
-
-            label="Verificar"
-
-            color="primary"
-
-            class="full-width"
-
-            :loading="verificandoOtp"
-
-            @click="verificarOtp"
-
-          />
+          <q-btn label="Verificar" color="primary" class="full-width" :loading="verificandoOtp" @click="verificarOtp" />
 
         </q-card-section>
 
@@ -276,21 +202,8 @@
 
 
 
-          <q-btn
-
-            v-if="seleccionados.length"
-
-            label="Movimiento"
-
-            icon="swap_horiz"
-
-            color="white"
-
-            text-color="primary"
-
-            @click="entregaDialog = true"
-
-          />
+          <q-btn v-if="seleccionados.length" label="Movimiento" icon="swap_horiz" color="white" text-color="primary"
+            @click="entregaDialog = true" />
 
 
 
@@ -312,25 +225,9 @@
 
 
 
-          <TableDynamic
-
-            v-model:selectedRows="seleccionados"
-
-            :columns="columnsConsulta"
-
-            :row="listaActivos"
-
-            :pagination="paginacionConsulta"
-
-            @update:pagination="paginacionConsulta = $event"
-
-            row-key="codigo"
-
-            show-selection
-
-            hide-bottom
-
-          >
+          <TableDynamic v-model:selectedRows="seleccionados" :columns="columnsConsulta" :row="listaActivos"
+            :pagination="paginacionConsulta" @update:pagination="paginacionConsulta = $event" row-key="codigo"
+            show-selection hide-bottom>
 
             <template #body-cell-estado="props">
 
@@ -372,21 +269,8 @@
 
 
 
-    <EntregaModal
-
-      v-if="entregaDialog"
-
-      v-model:show="entregaDialog"
-
-      :activos="seleccionados"
-
-      :modo-publico="true"
-
-      :usuario-publico="usuarioOtp"
-
-      :http-client="httpClientOtp"
-
-    />
+    <EntregaModal v-if="entregaDialog" v-model:show="entregaDialog" :activos="seleccionados" :modo-publico="true"
+      :usuario-publico="usuarioOtp" :http-client="httpClientOtp" />
 
 
 
@@ -454,7 +338,7 @@ const entregaDialog = ref(false)
 
 const tokenTemporal = ref(null)
 
-const usuarioOtp    = ref(null)
+const usuarioOtp = ref(null)
 
 const httpClientOtp = ref(null)
 
@@ -486,21 +370,21 @@ const paginacionConsulta = ref({
 
 const columnsConsulta = [
 
-  { name: 'codigo',       label: 'Código',        field: 'codigo',        align: 'left' },
+  { name: 'codigo', label: 'Código', field: 'codigo', align: 'left' },
 
-  { name: 'denominacion', label: 'Denominación',   field: 'denominacion',  align: 'left' },
+  { name: 'denominacion', label: 'Denominación', field: 'denominacion', align: 'left' },
 
-  { name: 'marca',        label: 'Marca',          field: 'marca',         align: 'left' },
+  { name: 'marca', label: 'Marca', field: 'marca', align: 'left' },
 
-  { name: 'numero_serie', label: 'Número Serie',   field: 'numero_serie',  align: 'left' },
+  { name: 'numero_serie', label: 'Número Serie', field: 'numero_serie', align: 'left' },
 
-  { name: 'oficina',      label: 'Oficina',        field: 'oficina',       align: 'left' },
+  { name: 'oficina', label: 'Oficina', field: 'oficina', align: 'left' },
 
-  { name: 'area',         label: 'Área',           field: 'area',          align: 'left' },
+  { name: 'area', label: 'Área', field: 'area', align: 'left' },
 
-  { name: 'estado',       label: 'Estado',         field: 'estado',        align: 'center' },
+  { name: 'estado', label: 'Estado', field: 'estado', align: 'center' },
 
-  { name: 'condicion',    label: 'Condición',      field: 'condicion',     align: 'center' },
+  { name: 'condicion', label: 'Condición', field: 'condicion', align: 'center' },
 
 ]
 
@@ -508,7 +392,7 @@ const columnsConsulta = [
 
 function getStatusColor(estado) {
 
-  if (estado === 'activo')   return 'positive'
+  if (estado === 'activo') return 'positive'
 
   if (estado === 'inactivo') return 'negative'
 
@@ -520,13 +404,13 @@ function getStatusColor(estado) {
 
 function getCondicionColor(condicion) {
 
-  if (condicion === 'nuevo')   return 'grey'
+  if (condicion === 'nuevo') return 'grey'
 
-  if (condicion === 'bueno')   return 'primary'
+  if (condicion === 'bueno') return 'primary'
 
   if (condicion === 'regular') return 'warning'
 
-  if (condicion === 'malo')    return 'negative'
+  if (condicion === 'malo') return 'negative'
 
   return 'grey'
 
@@ -540,27 +424,12 @@ function getCondicionColor(condicion) {
 
 const enviarOtp = async () => {
 
-  if (!formConsulta.value.correo || !formConsulta.value.dni) {
-
-    return $q.notify({ type: 'warning', message: 'Completa correo y DNI' })
-
-  }
-
-  if (!formConsulta.value.correo.endsWith('@est.unap.edu.pe')) {
-
-    return $q.notify({ type: 'warning', message: 'Solo se aceptan correos institucionales' })
-
-  }
-
-
 
   loadingOtp.value = true
 
   try {
 
     const res = await httpClient.post('/otp/solicitar', {
-
-      correo: formConsulta.value.correo,
 
       dni: formConsulta.value.dni
 
@@ -620,8 +489,6 @@ const verificarOtp = async () => {
 
     const data = await httpClient.post('/otp/verificar', {
 
-      correo: formConsulta.value.correo,
-
       dni: formConsulta.value.dni,
 
       otp: otpCode.value
@@ -630,11 +497,11 @@ const verificarOtp = async () => {
 
     tokenTemporal.value = data.token_temporal
 
-    usuarioOtp.value    = data.usuario
+    usuarioOtp.value = data.usuario
 
     httpClientOtp.value = new AxiosAdapter({
 
-      baseUrl:  process.env.API_URL || '',
+      baseUrl: process.env.API_URL || '',
 
       getToken: () => tokenTemporal.value
 
@@ -668,8 +535,6 @@ const consultarActivos = async () => {
 
   const res = await httpClient.post('/activos/consultar-por-dni', {
 
-    correo: formConsulta.value.correo,
-
     dni: formConsulta.value.dni,
 
     session_id: otpSession.value
@@ -694,23 +559,23 @@ const consultarActivos = async () => {
 
 
   //usuarioOtp.value = {
-   // id: res.id,
-   // nombre: res.responsable ?? 'Usuario',
+  // id: res.id,
+  // nombre: res.responsable ?? 'Usuario',
 
   //  dni: formConsulta.value.dni,
 
-   // oficinas: res.oficinas ?? []
+  // oficinas: res.oficinas ?? []
 
   //}
-listaActivos.value = res.data ?? []
-responsableNombre.value = res.responsable ?? 'Usuario'
+  listaActivos.value = res.data ?? []
+  responsableNombre.value = res.responsable ?? 'Usuario'
 
-usuarioOtp.value = {
-  id: res.id,
-  nombre: res.responsable ?? 'Usuario',
-  dni: formConsulta.value.dni,
-  oficinas: res.oficinas ?? []
-}
+  usuarioOtp.value = {
+    id: res.id,
+    nombre: res.responsable ?? 'Usuario',
+    dni: formConsulta.value.dni,
+    oficinas: res.oficinas ?? []
+  }
 
 
   console.log('listaActivos:', listaActivos.value)

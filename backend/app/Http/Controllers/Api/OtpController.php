@@ -11,40 +11,39 @@ use Illuminate\Support\Facades\Mail;
 
 class OtpController extends Controller
 {
-    public function solicitar(Request $request)
+public function solicitar(Request $request)
 {
     $request->validate([
-        'correo' => 'required|email',
         'dni' => 'required'
     ]);
 
-    $codigo = rand(100000, 999999);
+    // Buscar usuario y obtener su correo
+    $user = \App\Models\User::where('dni', $request->dni)->first();
 
+    if (!$user || !$user->email) {
+        return response()->json(['message' => 'No se encontró usuario con ese DNI'], 404);
+    }
+
+    $codigo    = rand(100000, 999999);
     $sessionId = Str::uuid()->toString();
 
     Otp::where('dni', $request->dni)->delete();
 
     Otp::create([
-        'email' => $request->correo,
-        'dni' => $request->dni,
-        'code' => $codigo,
+        'email'      => $user->email,
+        'dni'        => $request->dni,
+        'code'       => $codigo,
         'expires_at' => Carbon::now()->addMinutes(5),
         'session_id' => $sessionId
     ]);
 
     Mail::html(
-        view('emails.otp', [
-            'codigo'  => $codigo,
-            'nombre'  => $user->name ?? 'Usuario',  // si tienes el usuario en ese punto
-        ])->render(),
-        function ($msg) use ($request) {
-            $msg->to($request->correo)
-                ->subject('Código de verificación - UNAP');
-        }
+        view('emails.otp', ['codigo' => $codigo, 'nombre' => $user->name])->render(),
+        fn($msg) => $msg->to($user->email)->subject('Código de verificación - UNAP')
     );
 
     return response()->json([
-        'message' => 'Código enviado al correo',
+        'message'    => 'Código enviado al correo registrado',
         'session_id' => $sessionId
     ]);
 }
@@ -52,13 +51,11 @@ class OtpController extends Controller
     public function verificar(Request $request)
 {
     $request->validate([
-        'correo' => 'required|email',
         'dni'    => 'required',
         'otp'    => 'required'
     ]);
 
     $otp = Otp::where('dni', $request->dni)
-        ->where('email', $request->correo)
         ->where('code', $request->otp)
         ->first();
 
