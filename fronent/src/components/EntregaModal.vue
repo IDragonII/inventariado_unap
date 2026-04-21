@@ -304,7 +304,6 @@ import { ref, defineProps, defineEmits, onMounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 // DESPUÉS
 import { authService } from '../services/authService'
-import { activoService } from 'src/services/activoService'
 import { httpClient as httpClientBase } from 'boot/axios'  // ← renombrado para evitar colisión
 const oficinaUsuarioSeleccionada = ref(null)
 const activosFiltrados = computed(() => {
@@ -562,7 +561,10 @@ const mostrarVistaPrevia = () => {
 // Mostrar y descargar el documento PDF de la entrega
 const mostrarDocumentoPDF = async (movimientoId) => {
   try {
-    const blob = await activoService.descargarPDFEntrega(movimientoId)
+    const pdfPath = props.modoPublico 
+      ? `/otp/movimientos/${movimientoId}/pdf`
+      : `/auth/movimientos/${movimientoId}/pdf`
+    const blob = await http.value.get(pdfPath, { responseType: 'blob' })
     pdfUrl.value = URL.createObjectURL(blob)
     paso.value = 'pdf'
   } catch (error) {
@@ -631,12 +633,18 @@ const guardarEntrega = async () => {
     }
     console.log('heres', oficinaUsuarioSeleccionada.value)
     console.log('usuarioEntrega:', usuarioEntrega.value)
-    const response = await http.value.post('/otp/entregas', data)  // ← CAMBIADO
+    const response = await http.value.post('/otp/entregas', data)
+    console.log('Response:', response)
+    const movimientoId = response.data?.id || response.id
     $q.notify({
       type: 'positive',
       message: 'Entrega realizada con éxito'
     })
-    await mostrarDocumentoPDF(response.id)
+    if (movimientoId) {
+      await mostrarDocumentoPDF(movimientoId)
+    } else {
+      console.error('No se pudo obtener el ID del movimiento:', response)
+    }
     emit('guardar', data)
   } catch (error) {
     const messages = error.response.data?.errors

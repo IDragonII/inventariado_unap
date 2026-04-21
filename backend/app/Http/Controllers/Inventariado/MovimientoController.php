@@ -122,9 +122,10 @@ class MovimientoController extends BaseController
             'fecha_movimiento' => now(),
             'estado' => 'pendiente',
             'observaciones_entrega' => $data['observaciones'] ?? null,
-
             'autorizado_por' => $userId
         ]);
+
+        Log::info('Movimiento creado', ['id' => $movimiento->id, 'codigo' => $movimiento->codigo]);
 
         // Crear los movimientos de activos
         foreach ($data['activos'] as $activoData) {

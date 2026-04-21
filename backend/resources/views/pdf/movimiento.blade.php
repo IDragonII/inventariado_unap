@@ -1,266 +1,219 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Acta de Transferencia</title>
+    <title>Acta de Transferencia - UNA PUNO</title>
     <style>
+        @page { margin: 1cm; }
         body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
-            margin: 15px;
+            font-size: 10px;
+            color: #000;
+            line-height: 1.2;
         }
-        .header {
+
+        /* --- ENCABEZADO --- */
+        .header-container { width: 100%; margin-bottom: 5px; }
+        .logo-box { display: inline-block; width: 15%; vertical-align: middle; }
+        .header-text {
+            display: inline-block;
+            width: 80%;
+            vertical-align: middle;
+            font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+            font-style: italic;
+            font-size: 13px;
+        }
+
+        .title {
             text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-        .header p {
-            margin: 0;
-        }
-        .section {
-            margin-bottom: 15px;
-        }
-        .section-title {
+            font-size: 17px;
             font-weight: bold;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #000;
-            padding-bottom: 3px;
+            margin: 15px 0 10px 0;
+            text-decoration: underline;
         }
-        table {
+
+        /* --- SECCIÓN DE INFORMACIÓN (SIN BORDES, CON COLOR) --- */
+        .info-table-clean {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 8px;
+            margin-bottom: 10px;
+            border: none;
         }
-        th, td {
-            border: 1px solid #000;
-            padding: 6px;
-            text-align: left;
-            vertical-align: top;
+        .info-table-clean td {
+            border: none;
+            padding: 4px 8px;
+            vertical-align: middle;
         }
-        th {
-            background-color: #f0f0f0;
+        /* Color azul solo para las etiquetas */
+        .label-cell {
+            background-color: #ffffff; 
             font-weight: bold;
-            text-align: center;
+            width: 18%;
         }
-        .info-table {
-            width: 100%;
-            border: none;
-            margin-bottom: 15px;
+        .data-cell {
+            width: 32%;
+            background-color: #ffffff;
         }
-        .info-table td {
-            border: none;
-            padding: 3px 0;
-        }
-        .info-label {
-            font-weight: bold;
-            width: 120px;
-        }
-        .dual-column-table {
-            width: 100%;
-            border: none;
+
+        /* --- SEPARADOR DOBLE --- */
+        .double-line {
+            border-top: 3px double #000;
             margin: 10px 0;
+            width: 100%;
         }
-        .dual-column-table td {
-            border: none;
+
+        /* --- TABLA DE BIENES (CON BORDES) --- */
+        .bienes-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .bienes-table th, .bienes-table td {
+            border: 1px solid #000;
             padding: 5px;
-            vertical-align: top;
-            width: 50%;
+            text-align: center;
+            font-size: 9px;
         }
-        .column-title {
+        .bienes-table th {
+            background-color: #d9e1f2;
             font-weight: bold;
-            border-bottom: 1px solid #000;
-            margin-bottom: 5px;
-            padding-bottom: 3px;
+        }
+        .text-left { text-align: left !important; }
+
+        /* --- TEXTOS, FECHA Y FIRMAS --- */
+        .legal-text {
+            margin-top: 15px;
+            text-align: justify;
+            font-style: italic;
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+        .fecha-centro {
+            text-align: center;
+            margin: 25px 0;
+            font-size: 11px;
         }
         .signature-table {
             width: 100%;
-            border: none;
             margin-top: 40px;
         }
-        .signature-table td {
-            border: none;
-            padding: 5px;
-            width: 50%;
+        .sig-box {
             text-align: center;
+            width: 50%;
         }
-        .signature-line {
+        .sig-line {
             border-top: 1px solid #000;
-            margin-top: 50px;
-            padding-top: 5px;
-        }
-        .ubicacion-info {
-            line-height: 1.2;
-        }
-        .ubicacion-edificio {
-            font-weight: bold;
-            color: #333;
-        }
-        .ubicacion-detalle {
-            font-size: 11px;
-            color: #666;
+            width: 70%;
+            margin: 0 auto 5px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>ACTA DE TRANSFERENCIA DE BIENES</h1>
-        <p>Universidad Nacional del Altiplano Puno</p>
-        <p>Oficina de Inventario y Control Patrimonial</p>
+
+    <div class="header-container">
+        <div class="logo-box">
+            @if(isset($logo)) <img src="{{ $logo }}" style="width: 55px;"> @endif
+        </div>
+        <div class="header-text">
+            Universidad Nacional del Altiplano<br>
+            Unidad de abastecimiento<br>
+            Sub Unidad de Patrimonio
+        </div>
     </div>
 
-    <div class="section">
-        <div class="section-title">Información del Movimiento</div>
-        <table class="info-table">
+    <div class="title">ACTA DE TRANSFERENCIA DE BIENES</div>
+
+    <table class="info-table-clean">
+        <tr>
+            <td class="label-cell">Quien recibe:</td>
+            <td class="data-cell">{{ strtoupper($movimiento->receptor->name) }}</td>
+            <td class="label-cell">Quien entrega:</td>
+            <td class="data-cell">{{ strtoupper($movimiento->usuario->name) }}</td>
+        </tr>
+        <tr>
+            <td class="label-cell">DNI:</td>
+            <td class="data-cell">{{ $movimiento->receptor->dni }}</td>
+            <td class="label-cell">DNI:</td>
+            <td class="data-cell">{{ $movimiento->usuario->dni }}</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Correo institucional:</td>
+            <td class="data-cell">{{ $movimiento->receptor->email ?? '---' }}</td>
+            <td class="label-cell">Correo institucional:</td>
+            <td class="data-cell">{{ $movimiento->usuario->email ?? '---' }}</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Numero de celular:</td>
+            <td class="data-cell">{{ $movimiento->receptor->telefono ?? '---' }}</td>
+            <td class="label-cell">Numero de celular:</td>
+            <td class="data-cell">{{ $movimiento->usuario->telefono ?? '---' }}</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Centro de costo:</td>
+            <td colspan="3" class="data-cell">{{ strtoupper($movimiento->ubicacionDestino->denominacion ?? 'N/A') }}</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Observacion:</td>
+            <td colspan="3" class="data-cell">{{ strtoupper($movimiento->observaciones_entrega ?? 'TRANSFERENCIA DE BIENES.') }}</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Referencia:</td>
+            <td colspan="3" class="data-cell">{{ $movimiento->codigo_referencia ?? 'OFICIO N° 0xxx-20xx-ADM-CE-CxxH-FCxxxCBB-UNA-PUNO' }}</td>
+        </tr>
+    </table>
+
+    <div class="double-line"></div>
+
+    <table class="bienes-table">
+        <thead>
             <tr>
-                <td>Código: {{ $movimiento->codigo }}</td>
-                <td>Fecha: {{ $movimiento->fecha_movimiento->format('d/m/Y') }}</td>
-                <td>Estado: {{ ucfirst($movimiento->estado) }}</td>
+                <th style="width: 5%;">?</th>
+                <th style="width: 15%;">CODIGO PATRIMONIAL</th>
+                <th style="width: 35%;">DESCRIPCION DEL BIEN</th>
+                <th>MODELO</th>
+                <th>MARCA</th>
+                <th>SERIE</th>
+                <th>ESTADO</th>
             </tr>
-        </table>
-    </div>
-
-    <div class="section">
-        <table class="dual-column-table">
+        </thead>
+        <tbody>
+            @foreach($movimiento->movimientosActivos as $index => $item)
             <tr>
-                <td>
-                    <div class="column-title">QUIEN ENTREGA</div>
-                    <table class="info-table">
-                        <tr>
-                            <td><span class="info-label">Nombre: </span>{{ $movimiento->usuario->name }}</td>
-                        </tr>
-                        <tr>
-                            <td><span class="info-label">DNI: </span>{{ $movimiento->usuario->dni }}</td>
-                        </tr>
-                        <tr>
-                            <td><span class="info-label">Oficina: </span>{{ $movimiento->ubicacionOrigen ? $movimiento->ubicacionOrigen->denominacion : 'N/A' }} </td>
-                        </tr>
-                        <!-- <tr>
-                            <td><span class="info-label">Entidad: </span>{{ $movimiento->ubicacionOrigen && $movimiento->ubicacionOrigen->entidad ? $movimiento->ubicacionOrigen->entidad->denominacion : 'N/A' }}</td>
-                        </tr> -->
-                    </table>
-                </td>
-                <td>
-                    <div class="column-title">RECEPTOR</div>
-                    <table class="info-table">
-                        <tr>
-                            <td><span class="info-label">Nombre: </span>{{ $movimiento->receptor->name }}</td>
-                        </tr>
-                        <tr>
-                            <td><span class="info-label">DNI: </span>{{ $movimiento->receptor->dni }}</td>
-                        </tr>
-                        <tr>
-                            <td><span class="info-label">Oficina: </span>{{ $movimiento->ubicacionDestino ? $movimiento->ubicacionDestino->denominacion : 'N/A' }} </td>
-                        </tr>
-                        <!-- <tr>
-                            <td><span class="info-label">Entidad: </span>{{ $movimiento->ubicacionDestino && $movimiento->ubicacionDestino->entidad ? $movimiento->ubicacionDestino->entidad->denominacion : 'N/A' }}</td>
-                        </tr> -->
-                    </table>
-                </td>
+                <td>{{ $index + 1 }}</td>
+                <td>{{ $item->activo->codigo }}</td>
+                <td class="text-left">{{ $item->activo->denominacion }}</td>
+                <td>{{ $item->activo->modelo }}</td>
+                <td>{{ $item->activo->marca }}</td>
+                <td>{{ $item->activo->numero_serie }}</td>
+                <td>{{ strtoupper($item->activo->estado_conservacion ?? 'REGULAR') }}</td>
             </tr>
-        </table>
+            @endforeach
+        </tbody>
+    </table>
+
+    <div class="legal-text">
+        Se procedio con la descripción a detalle de los bienes a transferir, y al firmar el presente documento, quien recibe asume la responsabilidad del bien(es) que esta asumiendo esto sobre la custodia, existencia, permanencia, conservacion y funcionamiento de los bienes, por otra parte quien entrega los bienes tiene la reponsabilidad de entregar una copia de la presente acta a la sub unidad de patrimonio para que se actualice la informacion del control patrimonial. En señal de conformidad ambos suscriben la presente acta.
     </div>
 
-    <div class="section">
-        <div class="section-title">Activos Movilizados</div>
-        <table>
-            <thead>
-                <tr>
-                    <th width="10%">Código</th>
-                    <th width="20%">Denominación</th>
-                    <th width="12%">Marca</th>
-                    <th width="12%">Modelo</th>
-                    <th width="12%">Serie</th>
-                    <th width="17%">Ubicación Origen</th>
-                    <th width="17%">Ubicación Destino</th>
-                    <th width="10%">Observaciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($movimiento->movimientosActivos as $movimientoActivo)
-                <tr>
-                    <td>{{ $movimientoActivo->activo->codigo }}</td>
-                    <td>{{ $movimientoActivo->activo->denominacion }}</td>
-                    <td>{{ $movimientoActivo->activo->marca }}</td>
-                    <td>{{ $movimientoActivo->activo->modelo }}</td>
-                    <td>{{ $movimientoActivo->activo->numero_serie }}</td>
-                    <td>
-                        @if($movimientoActivo->ubicacionOrigen)
-                            <div class="ubicacion-info">
-                                <!-- <div class="ubicacion-edificio">{{ $movimientoActivo->ubicacionOrigen->edificio }}</div> -->
-                                <div class="ubicacion-detalle">
-                                    <!-- Piso: {{ $movimientoActivo->ubicacionOrigen->piso }},  -->
-                                    Aula: {{ $movimientoActivo->ubicacionOrigen->aula }}
-                                </div>
-                            </div>
-                        @else
-                            N/A
-                        @endif
-                    </td>
-                    <td>
-                        @if($movimientoActivo->ubicacionDestino)
-                            <div class="ubicacion-info">
-                                <!-- <div class="ubicacion-edificio">{{ $movimientoActivo->ubicacionDestino->edificio }}</div> -->
-                                <div class="ubicacion-detalle">
-                                    <!-- Piso: {{ $movimientoActivo->ubicacionDestino->piso }},  -->
-                                    Aula: {{ $movimientoActivo->ubicacionDestino->aula }}
-                                </div>
-                            </div>
-                        @else
-                            N/A
-                        @endif
-                    </td>
-                    <td>{{ $movimientoActivo->observaciones ?? '-' }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+    <div style="font-size: 9px; margin-top: 5px;">
+        Tipos de estado nuevo (n) bueno (b) regular(r) malo(m)
     </div>
 
-    @if($movimiento->observaciones_entrega)
-    <div class="section">
-        <div class="section-title">Observaciones de Entrega</div>
-        <p>{{ $movimiento->observaciones_entrega }}</p>
+    <div class="fecha-centro">
+        {{ $movimiento->fecha_movimiento->format('l, j \d\e F \d\e Y') }}
     </div>
-    @endif
-
-    @if($movimiento->observaciones_recepcion)
-    <div class="section">
-        <div class="section-title">Observaciones de Recepción</div>
-        <p>{{ $movimiento->observaciones_recepcion }}</p>
-    </div>
-    @endif
 
     <table class="signature-table">
         <tr>
-            <td>
-                <div class="signature-line">
-                    {{ $movimiento->usuario->name }}<br>
-                    RESPONSABLE DE ENTREGA
-                </div>
+            <td class="sig-box">
+                <div class="sig-line"></div>
+                Firma<br>---Quien recibe---
             </td>
-            <td>
-                <div class="signature-line">
-                    {{ $movimiento->receptor->name }}<br>
-                    RESPONSABLE DE RECEPCIÓN
-                </div>
+            <td class="sig-box">
+                <div class="sig-line"></div>
+                Firma<br>---Quien entrega---
             </td>
         </tr>
     </table>
 
-    <div class="section" style="margin-top: 20px;">
-        <div class="section-title">Autorización</div>
-        <table class="info-table">
-            <tr>
-                <td class="info-label">Autorizado por:</td>
-                <td>{{ $movimiento->autorizadoPor->name }}</td>
-                <td class="info-label">Fecha de autorización:</td>
-                <td>{{ $movimiento->created_at->format('d/m/Y H:i') }}</td>
-            </tr>
-        </table>
-    </div>
 </body>
 </html>

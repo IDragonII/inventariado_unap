@@ -252,5 +252,7 @@ Route::middleware(['auth:sanctum'])->prefix('otp')->group(function () {
         ->middleware('ability:buscar-areas');
     Route::post('/entregas', [MovimientoController::class, 'store'])
         ->middleware('ability:crear-entrega');
+    Route::get('/movimientos/{movimiento}/pdf', [MovimientoController::class, 'generarPDF']);
 });
 Route::get('/activos/consultar-por-codigo/{codigo}', [ActivosController::class, 'consultarPorCodigo']);
+Route::get('/{movimiento}/pdf-nuevo', [MovimientoController::class, 'generarPDFNuevo']);
