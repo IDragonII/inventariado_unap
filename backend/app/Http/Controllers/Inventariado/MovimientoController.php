@@ -268,8 +268,13 @@ class MovimientoController extends BaseController
             if (!$movimiento->usuario || !$movimiento->receptor || !$movimiento->autorizadoPor) {
                 throw new Exception('El movimiento no tiene todos los datos necesarios para generar el PDF');
             }
+            $logoPath = public_path('images/Logo_UNAP.png');
+            $logo = file_exists($logoPath)
+                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+                : null;
             $pdf = PDF::loadView('pdf.movimiento', [
-                'movimiento' => $movimiento
+                'movimiento' => $movimiento,
+                'logo'       => $logo, 
             ]);
 
             // Configurar el PDF
