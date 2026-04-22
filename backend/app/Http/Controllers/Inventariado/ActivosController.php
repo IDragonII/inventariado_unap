@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\Inventariado\Area;
+use App\Models\Edificio;
 use PDF;
 use Mpdf\Mpdf;
 use Illuminate\Support\Facades\Validator;
@@ -1229,5 +1230,187 @@ public function consultarPorCodigo($codigo)
         'condicion'     => $activo->condicion,
         'condicion_display' => $activo->condicion_display,
     ]);
+}
+
+public function importarActivos(Request $request)
+{
+    try {
+        $file = $request->file('archivo');
+        
+        if (!$file) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró el archivo'
+            ], 400);
+        }
+
+        $data = Excel::toArray(null, $file);
+        $rows = $data[0] ?? [];
+        
+        if (empty($rows)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El archivo está vacío'
+            ], 400);
+        }
+
+        // Encabezados (primera fila)
+        $headers = array_map(fn($h) => strtolower(trim($h)), $rows[0]);
+        $dataRows = array_slice($rows, 1);
+        
+        $resultados = [
+            'creados' => 0,
+            'actualizados' => 0,
+            'errores' => []
+        ];
+
+        foreach ($dataRows as $index => $row) {
+            $fila = array_combine($headers, $row);
+            $fila = array_map(fn($v) => $v !== null ? trim($v) : null, $fila);
+            
+            try {
+                // Buscar o crear oficina
+                $oficinaId = null;
+                if (!empty($fila['oficina_codigo'])) {
+                    $oficina = \App\Models\Inventariado\Oficina::where('codigo', $fila['oficina_codigo'])->first();
+                    if ($oficina) {
+                        $oficinaId = $oficina->id;
+                    } else {
+                        $oficina = \App\Models\Inventariado\Oficina::create([
+                            'codigo' => $fila['oficina_codigo'],
+                            'denominacion' => $fila['oficina_nombre'] ?? $fila['oficina_codigo'],
+                        ]);
+                        $oficinaId = $oficina->id;
+                    }
+                }
+
+                // Buscar o crear área (verificando que coincida con oficina)
+                $areaId = null;
+                if (!empty($fila['area_codigo']) && $oficinaId) {
+                    $area = \App\Models\Inventariado\Area::where('codigo', $fila['area_codigo'])
+                        ->where('oficina_id', $oficinaId)
+                        ->first();
+                    if ($area) {
+                        $areaId = $area->id;
+                    } else {
+                        $area = \App\Models\Inventariado\Area::create([
+                            'codigo' => $fila['area_codigo'],
+                            'aula' => $fila['area_nombre'] ?? $fila['area_codigo'],
+                            'oficina_id' => $oficinaId,
+                        ]);
+                        $areaId = $area->id;
+                    }
+                }
+
+                // Buscar o crear edificio
+                $edificioId = null;
+                if (!empty($fila['edificio_codigo'])) {
+                    $edificio = Edificio::where('codigo', $fila['edificio_codigo'])->first();
+                    if ($edificio) {
+                        $edificioId = $edificio->id;
+                    } else {
+                        $edificio = Edificio::create([
+                            'codigo' => $fila['edificio_codigo'],
+                            'denominacion' => $fila['edificio_nombre'] ?? $fila['edificio_codigo'],
+                        ]);
+                        $edificioId = $edificio->id;
+                    }
+                }
+
+                // Buscar o crear responsable
+                $responsableId = null;
+                if (!empty($fila['responsable_dni'])) {
+                    $responsable = \App\Models\User::where('dni', $fila['responsable_dni'])->first();
+                    if ($responsable) {
+                        $responsableId = $responsable->id;
+                    } else {
+                        $responsable = \App\Models\User::create([
+                            'dni' => $fila['responsable_dni'],
+                            'name' => $fila['responsable_nombre'] ?? 'Sin nombre',
+                            'email' => $fila['responsable_dni'] . '@unap.edu.pe',
+                        ]);
+                        $responsableId = $responsable->id;
+                    }
+                }
+
+                // Convertir estado y condición a códigos
+                $estadoCodigo = match(strtolower($fila['estado'] ?? '')) {
+                    'activo' => 'A',
+                    'inactivo' => 'I',
+                    default => $fila['estado'] ?? 'A'
+                };
+                
+                $condicionCodigo = match(strtolower($fila['condicion'] ?? '')) {
+                    'nuevo' => 'N',
+                    'bueno' => 'B',
+                    'regular' => 'R',
+                    'malo' => 'M',
+                    default => $fila['condicion'] ?? 'B'
+                };
+
+                // Validar tipo (debe ser AF, AU o ND)
+                $tipoValor = strtoupper(trim($fila['tipo'] ?? ''));
+                $tiposValidos = ['AF', 'AU', 'ND'];
+                if (!in_array($tipoValor, $tiposValidos)) {
+                    $resultados['errores'][] = "Fila " . ($index + 2) . ": El tipo '" . ($fila['tipo'] ?? '') . "' no es válido. Usa: AF (Activo Fijo), AU (Activo Uniforme) o ND (No Definido)";
+                    continue;
+                }
+
+                // Buscar activo por código
+                $activo = Activo::where('codigo', $fila['codigo'] ?? '')->first();
+                
+                $datosActivo = [
+                    'codigo' => $fila['codigo'] ?? '',
+                    'cod_toma' => $fila['cod_toma'] ?? '',
+                    'denominacion' => $fila['denominacion'] ?? '',
+                    'tipo' => $tipoValor,
+                    'marca' => $fila['marca'] ?? '',
+                    'modelo' => $fila['modelo'] ?? '',
+                    'numero_serie' => $fila['numero_serie'] ?? '',
+                    'dimension' => $fila['dimension'] ?? '',
+                    'aula' => $fila['aula'] ?? '',
+                    'fecha_adquisicion' => $fila['fecha_adquisicion'] ?? null,
+                    'valor_inicial' => $fila['valor_inicial'] ?? 0,
+                    'estado' => $estadoCodigo,
+                    'condicion' => $condicionCodigo,
+                    'descripcion' => $fila['descripcion'] ?? '',
+                    'area_id' => $areaId,
+                    'edificio_id' => $edificioId,
+                    'piso' => $fila['piso'] ?? '',
+                    'responsable_id' => $responsableId,
+                    'telefono' => $fila['telefono'] ?? '',
+                    'declaracion' => $fila['declaracion'] ?? '',
+                    'dniInventariador' => $fila['dni_inventariador'] ?? '',
+                    'nombreInventariador' => $fila['nombre_inventariador'] ?? '',
+                ];
+
+                if ($activo) {
+                    // Actualizar
+                    $activo->update($datosActivo);
+                    $resultados['actualizados']++;
+                } else {
+                    // Crear nuevo
+                    Activo::create($datosActivo);
+                    $resultados['creados']++;
+                }
+
+            } catch (\Exception $e) {
+                $resultados['errores'][] = 'Fila ' . ($index + 2) . ': ' . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+'message' => 'Importación completada',
+            'data' => $resultados
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error en importaci��n: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al importar: ' . $e->getMessage()
+        ], 500);
+    }
 }
 }

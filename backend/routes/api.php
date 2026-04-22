@@ -109,6 +109,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/historialpdf', [ActivosController::class, 'historialPdf']);
         Route::get('/inventariador', [ActivosController::class, 'inventariador']);
         Route::get('/export-activos', [ActivosController::class, 'exportActivos']);
+        Route::post('/importar', [ActivosController::class, 'importarActivos']);
         Route::get('/reporteSoftwareOTI', [ActivosController::class, 'reporteSoftwareOTI']);
         Route::get('/faltareporte', [ActivosController::class, 'faltaReporte']);
         Route::get('/faltareportepdf', [ActivosController::class, 'faltaReportePdf']);
