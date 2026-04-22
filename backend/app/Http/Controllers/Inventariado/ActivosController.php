@@ -1090,22 +1090,39 @@ class ActivosController extends BaseController
             return $this->handleException($e);
         }
     }
-    // ── Iniciar exportación ──────────────────────────────────────────
-public function iniciarExport(Request $request)
-{
-    $filtros = $request->only(['oficina_id', 'area_id', 'search', 'responsable_id']);
+// ── Iniciar exportación ──────────────────────────────────────────
+    public function iniciarExport(Request $request)
+    {
+        $filtros = $request->only(['oficina_id', 'area_id', 'search', 'responsable_id', 'ids']);
+        
+        \Illuminate\Support\Facades\Log::info('iniciarExport recibido', [
+            'filtros' => $filtros,
+            'ids_raw' => $filtros['ids'] ?? null,
+        ]);
+        
+        // Si vienen IDs en formato JSON string, decodificarlos
+        if (!empty($filtros['ids'])) {
+            $ids = $filtros['ids'];
+            if (is_string($ids)) {
+                $decoded = json_decode($ids, true);
+                $filtros['ids'] = is_array($decoded) ? $decoded : [];
+            }
+            \Illuminate\Support\Facades\Log::info('ids después de decodificar', [
+                'ids' => $filtros['ids'],
+            ]);
+        }
 
-    $export = Export::create([
-        'user_id' => auth()->id(),
-        'estado'  => 'procesando',
-        'filtros' => $filtros,
-        'mensaje' => 'Preparando exportación...',
-    ]);
+        $export = Export::create([
+            'user_id' => auth()->id(),
+            'estado'  => 'procesando',
+            'filtros' => $filtros,
+            'mensaje' => 'Preparando exportación...',
+        ]);
 
-    ExportActivosJob::dispatch($export->id, $filtros);
+        ExportActivosJob::dispatch($export->id, $filtros);
 
-    return response()->json(['export_id' => $export->id], 202);
-}
+        return response()->json(['export_id' => $export->id], 202);
+    }
 
 // ── Consultar estado ─────────────────────────────────────────────
 public function statusExport(int $id)

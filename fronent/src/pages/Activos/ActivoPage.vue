@@ -39,7 +39,7 @@
         v-model:search="searchFilter"
         v-model:oficina="oficinaFilter"
         v-model:ubicacion="ubicacionFilter"
-        v-model:select="select"
+        :select="seleccionados"
         @update:user="buscarUsuario"
         @update:movimiento="realizarMovimiento"
         :oficina-options="oficinaOptions"
@@ -49,7 +49,7 @@
 
     <q-card class="q-ma-md">
       <TableDynamic
-        v-model:selectedRows="select"
+        v-model:selectedRows="seleccionados"
         :columns="columns"
         :row="activos"
         :loading="loading"
@@ -170,7 +170,8 @@ const auth        = useAuthStore()
 const exportStore = useExportStore()
 const $q          = useQuasar()
 
-const select        = ref([])
+const select        = ref([])  // Para SearchActivo (no usado activamente)
+const seleccionados = ref([])  // Para la tabla de selectiones
 const entregaDialog = ref(false)
 const loading       = ref(false)
 const activos       = ref([])
@@ -351,20 +352,38 @@ const buscarUsuario = async (val) => {
 // ─── Exportar (segundo plano) ─────────────────────────────────────────────────
 
 const exportar = async () => {
-
-  const filtros = {
-    oficina_id: oficinaFilter.value?.value ?? null,
-    area_id:    ubicacionFilter.value?.value ?? null,
-    search:     searchFilter.value || null,
-    responsable_id: userFilter.value ?? null,
+  // Verificar qué hay en seleccionados
+  console.log('=== DEBUG EXPORT ===')
+  console.log('seleccionados.value:', JSON.stringify(seleccionados.value))
+  console.log('seleccionados.length:', seleccionados.value?.length)
+  
+  // Si hay filas seleccionadas, exportar solo esas
+  let filtros
+  if (seleccionados.value && seleccionados.value.length > 0) {
+    const ids = seleccionados.value.map(r => r.id)
+    console.log('IDs a exportar:', ids)
+    filtros = { ids: ids }
+    console.log('Enviando con IDs')
+  } else {
+    console.log('Enviando con filtros')
+    filtros = {
+      oficina_id:     oficinaFilter.value?.value ?? null,
+      area_id:        ubicacionFilter.value?.value ?? null,
+      search:         searchFilter.value || null,
+      responsable_id:  userFilter.value ?? null,
+    }
   }
+  console.log('filtros:', JSON.stringify(filtros))
 
   // Registrar en campanita como "procesando"
   const localId = Date.now()
+  const tieneSeleccion = seleccionados.value && seleccionados.value.length > 0
   exportStore.agregarExport({
     id:      localId,
     estado:  'procesando',
-    mensaje: `Preparando Excel de ${oficinaFilter.value?.label ?? 'todos los activos'}...`,
+    mensaje: tieneSeleccion
+      ? `Preparando Excel de ${seleccionados.value.length} activo(s) seleccionado(s)...`
+      : `Preparando Excel de ${oficinaFilter.value?.label ?? 'todos los activos'}...`,
   })
 
   $q.notify({ type: 'info', message: 'Exportación iniciada en segundo plano', position: 'top' })

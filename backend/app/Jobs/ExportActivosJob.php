@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use OpenSpout\Writer\XLSX\Writer;
 use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Common\Entity\Row;
@@ -37,6 +38,8 @@ class ExportActivosJob implements ShouldQueue
         if (!$export) return;
 
         try {
+            Log::info('ExportActivosJob iniciando', ['filtros' => $this->filtros]);
+            
             $archivo = $this->generarExcel();
             $export->update([
                 'estado'  => 'completado',
@@ -44,6 +47,7 @@ class ExportActivosJob implements ShouldQueue
                 'mensaje' => 'Exportación completada',
             ]);
         } catch (\Throwable $e) {
+            Log::error('Error en ExportActivosJob: ' . $e->getMessage());
             $export->update([
                 'estado'  => 'fallido',
                 'mensaje' => 'Error: ' . $e->getMessage(),
@@ -100,44 +104,47 @@ class ExportActivosJob implements ShouldQueue
             ->setShouldWrapText(false);
 
         $rowNum = 2;
-        $this->buildQuery()
-            ->with(['area.oficina', 'edificio', 'responsable'])
-            ->cursor()
-            ->each(function ($activo) use ($writer, &$rowNum, $stylePar, $styleImpar) {
-                $codigo = $activo->codigo;
-                if (str_contains($codigo, '->')) {
-                    $codigo = explode('->', $codigo)[0];
-                }
+        
+        // Obtener los activos según los filtros
+        $activos = $this->getActivos();
+        $total = $activos->count();
+        Log::info('Total de activos a exportar: ' . $total);
+        
+        foreach ($activos->cursor() as $activo) {
+            $codigo = $activo->codigo;
+            if (str_contains($codigo, '->')) {
+                $codigo = explode('->', $codigo)[0];
+            }
 
-                $style = ($rowNum % 2 === 0) ? $stylePar : $styleImpar;
+            $style = ($rowNum % 2 === 0) ? $stylePar : $styleImpar;
 
-                $writer->addRow(Row::fromValues([
-                    $codigo,
-                    $activo->denominacion                  ?? '-',
-                    $activo->marca                         ?? '-',
-                    $activo->modelo                        ?? '-',
-                    $activo->numero_serie                  ?? '-',
-                    $activo->area?->oficina?->codigo       ?? '-',
-                    $activo->area?->oficina?->denominacion ?? '-',
-                    $activo->area?->codigo                 ?? '-',
-                    $activo->area?->aula                   ?? '-',
-                    $activo->edificio?->codigo             ?? '-',
-                    $activo->edificio?->denominacion       ?? '-',
-                    $activo->piso                          ?? '-',
-                    $activo->aula                          ?? '-',
-                    $activo->estado === 'activo' ? 'U'     : 'D',
-                    $activo->condicion                     ?? '-',
-                    $activo->cod_toma                      ?? '-',
-                    $activo->item                          ?? '-',
-                    $activo->descripcion                   ?? '',
-                    $activo->responsable?->dni             ?? 'FALTANTE',
-                    $activo->responsable?->name            ?? '-',
-                    $activo->telefono                      ?? '-',
-                    $activo->nombreInventariador           ?? '-',
-                ], $style));
+            $writer->addRow(Row::fromValues([
+                $codigo,
+                $activo->denominacion                  ?? '-',
+                $activo->marca                         ?? '-',
+                $activo->modelo                        ?? '-',
+                $activo->numero_serie                  ?? '-',
+                $activo->area?->oficina?->codigo       ?? '-',
+                $activo->area?->oficina?->denominacion ?? '-',
+                $activo->area?->codigo                 ?? '-',
+                $activo->area?->aula                   ?? '-',
+                $activo->edificio?->codigo             ?? '-',
+                $activo->edificio?->denominacion       ?? '-',
+                $activo->piso                          ?? '-',
+                $activo->aula                          ?? '-',
+                $activo->estado === 'activo' ? 'U'     : 'D',
+                $activo->condicion                     ?? '-',
+                $activo->cod_toma                      ?? '-',
+                $activo->item                          ?? '-',
+                $activo->descripcion                   ?? '',
+                $activo->responsable?->dni             ?? 'FALTANTE',
+                $activo->responsable?->name            ?? '-',
+                $activo->telefono                      ?? '-',
+                $activo->nombreInventariador           ?? '-',
+            ], $style));
 
-                $rowNum++;
-            });
+            $rowNum++;
+        }
 
         $writer->close();
 
@@ -147,10 +154,38 @@ class ExportActivosJob implements ShouldQueue
         return $nombre;
     }
 
-    private function buildQuery()
+    private function getActivos()
     {
-        $query = Activo::query()->withTrashed(false);
-
+        $query = Activo::query()->with(['area.oficina', 'edificio', 'responsable']);
+        
+        // Verificar si hay IDs seleccionados explicitly
+        $ids = $this->filtros['ids'] ?? null;
+        
+        Log::info('Filtros recibidos en job:', [
+            'ids' => $ids,
+            'tipo' => gettype($ids),
+        ]);
+        
+        // Siempre priorizar IDs si existen y no están vacíos
+        if ($ids !== null && $ids !== '') {
+            // Si es string, intentar decodificar
+            if (is_string($ids)) {
+                $decoded = json_decode($ids, true);
+                if (is_array($decoded)) {
+                    $ids = $decoded;
+                }
+            }
+            
+            // Verificar que sea un array con datos
+            if (is_array($ids) && count($ids) > 0) {
+                Log::info('Usando IDs seleccionados para exportar:', $ids);
+                return $query->whereIn('id', $ids)->orderBy('id');
+            }
+        }
+        
+        // Si no hay IDs, usar filtros normales
+        Log::info('Usando filtros normales para exportar');
+        
         if (!empty($this->filtros['oficina_id'])) {
             $query->whereHas('area', fn($q) =>
                 $q->where('oficina_id', $this->filtros['oficina_id'])
@@ -168,6 +203,10 @@ class ExportActivosJob implements ShouldQueue
                   ->orWhere('denominacion', 'like', "%{$search}%")
                   ->orWhere('numero_serie', 'like', "%{$search}%")
             );
+        }
+
+        if (!empty($this->filtros['responsable_id'])) {
+            $query->where('responsable_id', $this->filtros['responsable_id']);
         }
 
         return $query->orderBy('id');
