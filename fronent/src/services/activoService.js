@@ -40,6 +40,20 @@ class ActivoService {
         await this.http.delete(`${this.resource}/exportar/${exportId}`)
     }
 
+    async importar(formData) {
+        try {
+            const response = await this.http.post(`${this.resource}/importar`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+            return response
+        } catch (error) {
+            console.error('Error en importación:', error)
+            throw error
+        }
+    }
+
     async getActivo (id) {
         try {
             const response = await this.http.get(this.resource, id)

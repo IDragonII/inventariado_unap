@@ -24,6 +24,22 @@
           @click="exportar"
         />
         <q-btn
+          icon="file_download"
+          color="positive"
+          :label="$q.screen.width <= $q.screen.sizes.md ? '' : 'Importar'"
+          class="q-ml-sm"
+          rounded dense
+          :class="$q.screen.width > $q.screen.sizes.md ? 'q-px-md' : ''"
+          @click="triggerFileInput"
+        />
+        <input
+          ref="fileInputRef"
+          type="file"
+          accept=".xlsx"
+          style="display: none"
+          @change="handleFileImport"
+        />
+        <q-btn
           icon="description"
           color="primary"
           :label="$q.screen.width <= $q.screen.sizes.md ? '' : 'Declaración de uso'"
@@ -445,6 +461,56 @@ const exportar = async () => {
     });
     $q.notify({ type: 'negative', message: 'No se pudo iniciar la exportación', position: 'top' });
   }
+}
+
+// ─── Importar ─────────────────────────────────────────────────────────────────
+
+const fileInputRef = ref(null)
+
+const triggerFileInput = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.click()
+  }
+}
+
+const handleFileImport = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  try {
+    const formData = new FormData()
+    formData.append('archivo', file)
+    
+    const response = await activoService.importar(formData)
+    
+    if (response.success) {
+      let msg = `Importación completada: ${response.data.creados} creados, ${response.data.actualizados} actualizados`
+      if (response.data.errores && response.data.errores.length > 0) {
+        msg += ` (${response.data.errores.length} errores)` + '\n\n' + response.data.errores.join('\n')
+        console.error('Errores de importación:', response.data.errores)
+      }
+      $q.notify({
+        type: response.data.errores?.length > 0 ? 'warning' : 'positive',
+        message: msg,
+        timeout: response.data.errores?.length > 0 ? 0 : 2000,
+        actions: response.data.errores?.length > 0 ? [{ icon: 'close', color: 'white' }] : []
+      })
+      loadData()
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: response.message || 'Error en la importación'
+      })
+    }
+  } catch (error) {
+    console.error('Error en importación:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al importar el archivo'
+    })
+  }
+  
+  event.target.value = ''
 }
 
 // ─── Movimiento ───────────────────────────────────────────────────────────────
