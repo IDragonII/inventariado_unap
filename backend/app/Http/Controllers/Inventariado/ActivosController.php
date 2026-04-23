@@ -1361,7 +1361,7 @@ public function importarActivos(Request $request)
                 
                 $datosActivo = [
                     'codigo' => $fila['codigo'] ?? '',
-                    'cod_toma' => $fila['cod_toma'] ?? '',
+                    'cod_toma' => null,
                     'denominacion' => $fila['denominacion'] ?? '',
                     'tipo' => $tipoValor,
                     'marca' => $fila['marca'] ?? '',
@@ -1378,10 +1378,6 @@ public function importarActivos(Request $request)
                     'edificio_id' => $edificioId,
                     'piso' => $fila['piso'] ?? '',
                     'responsable_id' => $responsableId,
-                    'telefono' => $fila['telefono'] ?? '',
-                    'declaracion' => $fila['declaracion'] ?? '',
-                    'dniInventariador' => $fila['dni_inventariador'] ?? '',
-                    'nombreInventariador' => $fila['nombre_inventariador'] ?? '',
                 ];
 
                 if ($activo) {
