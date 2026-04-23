@@ -161,7 +161,7 @@
 
     <EntregaModal
       v-model:show="entregaDialog"
-      :activos="select"
+      :activos="seleccionados"
     />
   </q-page>
 </template>
