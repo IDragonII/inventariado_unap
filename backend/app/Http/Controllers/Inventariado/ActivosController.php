@@ -201,7 +201,18 @@ class ActivosController extends BaseController
             Log::info('Datos antes de la inserción:', $data);
             $activo = Activo::create($data);
             $user = $request->user();
-            $user->activos()->attach($activo->id, ['fecha'=> now(), 'grupo'=>$user->grupo, 'user_id_two'=>$request->user_id_two]);
+            
+            $acta = Acta::create([
+                'numero_acta' => Acta::nextNumero(),
+            ]);
+            
+            $user->activos()->attach($activo->id, [
+                'fecha'=> now(), 
+                'grupo'=>$user->grupo, 
+                'user_id_two'=>$request->user_id_two,
+                'num_acta' => $acta->numero_acta,
+                'origen' => 'acta'
+            ]);
             DB::commit();
             return $this->successResponse(
                 new ActivoResource($activo->fresh()),
@@ -237,8 +248,32 @@ class ActivosController extends BaseController
             $activo->update($validatedData);
             $user = $request->user();
             $activo->update_user = $user->id;
+            
+            $lastRegistro = DB::table('activo_user')
+                ->where('activo_id', $activo->id)
+                ->whereNull('deleted_at')
+                ->orderBy('id', 'desc')
+                ->first();
+            
+            $numActa = null;
+            if (!$lastRegistro || !$lastRegistro->num_acta) {
+                $acta = Acta::create([
+                    'numero_acta' => Acta::nextNumero(),
+                ]);
+                $numActa = $acta->numero_acta;
+            } else {
+                $numActa = $lastRegistro->num_acta;
+            }
+            
             if ($user->role_id == 5 || $user->role_id == 2) {
-                $user->activos()->attach($activo->id, ['fecha'=> now(), 'grupo'=>$user->grupo, 'user_id_two'=>$request->user_id_two, 'update_user'=>$user->id]);
+                $user->activos()->attach($activo->id, [
+                    'fecha'=> now(), 
+                    'grupo'=>$user->grupo, 
+                    'user_id_two'=>$request->user_id_two, 
+                    'update_user'=>$user->id,
+                    'num_acta' => $numActa,
+                    'origen' => 'acta'
+                ]);
             }
             $activo->save();
             DB::commit();
@@ -1386,7 +1421,16 @@ public function importarActivos(Request $request)
                     $resultados['actualizados']++;
                 } else {
                     // Crear nuevo
-                    Activo::create($datosActivo);
+                    $nuevoActivo = Activo::create($datosActivo);
+                    
+                    // Adjuntar a usuario (importado)
+                    $user = $request->user();
+                    $user->activos()->attach($nuevoActivo->id, [
+                        'fecha' => now(),
+                        'grupo' => $user->grupo,
+                        'origen' => 'importado'
+                    ]);
+                    
                     $resultados['creados']++;
                 }
 
