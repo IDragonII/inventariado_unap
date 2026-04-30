@@ -47,6 +47,16 @@
           rounded dense
           :class="$q.screen.width > $q.screen.sizes.md ? 'q-px-md' : ''"
         />
+        <q-btn
+          icon="assignment"
+          color="secondary"
+          :label="$q.screen.width <= $q.screen.sizes.md ? '' : 'Exportar Actas'"
+          class="q-ml-sm"
+          rounded dense
+          :class="$q.screen.width > $q.screen.sizes.md ? 'q-px-md' : ''"
+          @click="exportarActas"
+          :loading="loadingAll.export"
+        />
       </q-toolbar>
     </q-card>
 
@@ -460,6 +470,95 @@ const exportar = async () => {
       mensaje: 'Error de conexión o datos inválidos',
     });
     $q.notify({ type: 'negative', message: 'No se pudo iniciar la exportación', position: 'top' });
+  }
+}
+
+// ─── Exportar Actas ─────────────────────────────────────────────────────────────
+
+const exportarActas = async () => {
+  try {
+    loadingAll.value.export = true
+    
+    let filtros
+    
+    if (seleccionados.value && seleccionados.value.length > 0) {
+      const ids = seleccionados.value.map(r => r.id)
+      filtros = { ids: ids }
+    } else {
+      filtros = {
+        responsable_id: userFilter.value ?? null,
+        area_id: ubicacionFilter.value?.value ?? null
+      }
+    }
+    
+    const localId = Date.now()
+    exportStore.agregarExport({
+      id: localId,
+      estado: 'procesando',
+      mensaje: 'Preparando exportación de actas...',
+      tipo: 'actas'
+    })
+    
+    const response = await activoService.iniciarExportActas(filtros)
+    
+    const export_id = response.export_id || response.data?.export_id
+    if (!export_id) {
+      throw new Error('No se pudo obtener el ID de exportación')
+    }
+    
+    exportStore.actualizarExport(localId, { export_id, tipo: 'actas' })
+    
+    const maxIntentos = 120
+    let intentos = 0
+    
+    const pollExport = async () => {
+      try {
+        const status = await activoService.statusExport(export_id)
+        
+        if (status.estado === 'completado') {
+          exportStore.actualizarExport(localId, {
+            estado: 'completado',
+            archivo: status.archivo,
+            mensaje: 'Exportación completada'
+          })
+          
+          const link = document.createElement('a')
+          link.href = status.url
+          link.setAttribute('download', `actas_${export_id}.xlsx`)
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          
+          $q.notify({ type: 'positive', message: 'Actas exportadas exitosamente', position: 'top' })
+        } else if (status.estado === 'fallido') {
+          exportStore.actualizarExport(localId, {
+            estado: 'fallido',
+            mensaje: status.mensaje || 'Error en la exportación'
+          })
+          $q.notify({ type: 'negative', message: 'Error en la exportación de actas', position: 'top' })
+        } else {
+          if (intentos < maxIntentos) {
+            intentos++
+            setTimeout(pollExport, 5000)
+          } else {
+            exportStore.actualizarExport(localId, {
+              estado: 'fallido',
+              mensaje: 'Tiempo de espera agotado'
+            })
+          }
+        }
+      } catch (pollError) {
+        console.error('Error en polling:', pollError)
+      }
+    }
+    
+    setTimeout(pollExport, 5000)
+    
+  } catch (error) {
+    console.error('ERROR CRITICO EXPORTAR ACTAS:', error)
+    $q.notify({ type: 'negative', message: 'No se pudo iniciar la exportación de actas', position: 'top' })
+  } finally {
+    loadingAll.value.export = false
   }
 }
 

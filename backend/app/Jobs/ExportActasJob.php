@@ -105,13 +105,16 @@ class ExportActasJob implements ShouldQueue
             ->join('areas as ar', 'a.area_id', '=', 'ar.id')
             ->join('users as r', 'a.responsable_id', '=', 'r.id')
             ->whereNotNull('au.num_acta')
+            ->where('au.origen', 'acta')
             ->whereNull('a.deleted_at')
             ->whereNull('au.deleted_at')
             ->whereIn('au.id', function ($q) {
-                $q->select(DB::raw('MAX(id)'))
-                    ->from('activo_user')
-                    ->whereNull('deleted_at')
-                    ->groupBy('activo_id');
+                $q->select(DB::raw('MAX(au2.id)'))
+                    ->from('activo_user as au2')
+                    ->whereNull('au2.deleted_at')
+                    ->where('au2.origen', 'acta')
+                    ->whereNotNull('au2.num_acta')
+                    ->groupBy('au2.activo_id');
             })
             ->select(
                 'a.codigo',

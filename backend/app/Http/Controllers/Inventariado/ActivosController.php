@@ -29,6 +29,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Inventariado\Acta;
 use App\Models\Export;
 use App\Jobs\ExportActivosJob;
+use App\Jobs\ExportActasJob;
 
 class ActivosController extends BaseController
 {
@@ -1156,6 +1157,30 @@ class ActivosController extends BaseController
         ]);
 
         ExportActivosJob::dispatch($export->id, $filtros);
+
+        return response()->json(['export_id' => $export->id], 202);
+    }
+
+    public function exportarActas(Request $request)
+    {
+        $filtros = $request->only(['responsable_id', 'area_id', 'ids']);
+        
+        if (!empty($filtros['ids'])) {
+            $ids = $filtros['ids'];
+            if (is_string($ids)) {
+                $decoded = json_decode($ids, true);
+                $filtros['ids'] = is_array($decoded) ? $decoded : [];
+            }
+        }
+
+        $export = Export::create([
+            'user_id' => auth()->id(),
+            'estado'  => 'procesando',
+            'filtros' => $filtros,
+            'mensaje' => 'Preparando exportación de actas...',
+        ]);
+
+        ExportActasJob::dispatch($export->id, $filtros);
 
         return response()->json(['export_id' => $export->id], 202);
     }

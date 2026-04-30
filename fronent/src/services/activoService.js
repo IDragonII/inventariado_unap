@@ -31,6 +31,11 @@ class ActivoService {
     return response // <--- QUITA EL '.data' AQUÍ
 }
 
+    async iniciarExportActas(filtros) {
+    const response = await this.http.post(`${this.resource}/exportar-actas`, filtros)
+    return response
+}
+
     async statusExport(exportId) {
     const response = await this.http.get(`${this.resource}/exportar/${exportId}/status`)
     return response // <--- QUITA EL '.data' AQUÍ
@@ -221,6 +226,10 @@ class ActivoService {
     }
     async getReportePdf (params) {
         const response = await this.http.get(`auth/activos/reportepdf`, {params})
+        return response
+    }
+    async getExportarActas (params) {
+        const response = await this.http.get(`auth/activos/exportar-actas`, {params})
         return response
     }
     async reportev2() {
