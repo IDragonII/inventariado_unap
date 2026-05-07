@@ -72,8 +72,16 @@ class ExportActasJob implements ShouldQueue
             ->setFontSize(11);
         
         $headers = [
-            'Código', 'Denominación', 'Marca', 'Modelo', 'Número Serie',
-            'Área', 'Responsable', 'DNI Responsable', 'Número Acta', 'Fecha'
+            'Código', 'Código Toma', 'Denominación', 'Tipo', 'Marca', 'Modelo', 
+            'Número Serie', 'Dimensión', 'Área', 'Fecha Adquisición', 'Valor Inicial',
+            'Estado', 'Condición', 'Descripción',
+            'Oficina Código', 'Oficina Nombre',
+            'Área Código', 'Área Nombre',
+            'Edificio Código', 'Edificio Nombre',
+            'Piso',
+            'Responsable DNI', 'Responsable Nombre',
+            'Teléfono', 'Declaración',
+            'Tipo Acta', 'Número Acta', 'Fecha Acta'
         ];
         
         $writer->addRow(Row::fromValues($headers, $headerStyle));
@@ -83,15 +91,33 @@ class ExportActasJob implements ShouldQueue
         foreach ($activos->cursor() as $activo) {
             $writer->addRow(Row::fromValues([
                 $activo->codigo ?? '',
+                $activo->cod_toma ?? '',
                 $activo->denominacion ?? '',
+                $activo->tipo ?? '',
                 $activo->marca ?? '',
                 $activo->modelo ?? '',
                 $activo->numero_serie ?? '',
+                $activo->dimension ?? '',
                 $activo->aula ?? '',
-                $activo->responsable_nombre ?? '',
+                $activo->fecha_adquisicion ?? '',
+                $activo->valor_inicial ?? '',
+                $activo->estado ?? '',
+                $activo->condicion ?? '',
+                $activo->descripcion ?? '',
+                $activo->oficina_codigo ?? '',
+                $activo->oficina_nombre ?? '',
+                $activo->area_codigo ?? '',
+                $activo->area_nombre ?? '',
+                $activo->edificio_codigo ?? '',
+                $activo->edificio_nombre ?? '',
+                $activo->piso ?? '',
                 $activo->responsable_dni ?? '',
+                $activo->responsable_nombre ?? '',
+                $activo->telefono ?? '',
+                $activo->declaracion ?? '',
+                $activo->origen ?? '',
                 $activo->num_acta ?? '',
-                $activo->fecha_registro ?? '',
+                $activo->fecha_acta ?? '',
             ]));
         }
     }
@@ -102,8 +128,10 @@ class ExportActasJob implements ShouldQueue
         
         $query = DB::table('activo_user as au')
             ->join('activos as a', 'au.activo_id', '=', 'a.id')
-            ->join('areas as ar', 'a.area_id', '=', 'ar.id')
-            ->join('users as r', 'a.responsable_id', '=', 'r.id')
+            ->leftJoin('areas as ar', 'a.area_id', '=', 'ar.id')
+            ->leftJoin('oficinas as of', 'ar.oficina_id', '=', 'of.id')
+            ->leftJoin('edificios as ed', 'a.edificio_id', '=', 'ed.id')
+            ->leftJoin('users as r', 'a.responsable_id', '=', 'r.id')
             ->whereNotNull('au.num_acta')
             ->where('au.origen', 'acta')
             ->whereNull('a.deleted_at')
@@ -118,15 +146,33 @@ class ExportActasJob implements ShouldQueue
             })
             ->select(
                 'a.codigo',
+                'a.cod_toma',
                 'a.denominacion',
+                'a.tipo',
                 'a.marca',
                 'a.modelo',
                 'a.numero_serie',
+                'a.dimension',
                 'ar.aula',
-                'r.name as responsable_nombre',
+                'a.fecha_adquisicion',
+                'a.valor_inicial',
+                'a.estado',
+                'a.condicion',
+                'a.descripcion',
+                'of.codigo as oficina_codigo',
+                'of.denominacion as oficina_nombre',
+                'ar.codigo as area_codigo',
+                'ar.aula as area_nombre',
+                'ed.codigo as edificio_codigo',
+                'ed.denominacion as edificio_nombre',
+                'a.piso',
                 'r.dni as responsable_dni',
+                'r.name as responsable_nombre',
+                'a.telefono',
+                'a.declaracion',
+                'au.origen',
                 'au.num_acta',
-                'au.fecha as fecha_registro'
+                'au.fecha as fecha_acta'
             );
         
         if ($ids !== null && $ids !== '') {

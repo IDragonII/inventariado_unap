@@ -306,6 +306,15 @@
 
           </div>
 
+          <div class="row justify-end q-mb-sm" v-if="listaActivos.length > 0">
+            <q-btn 
+              icon="picture_as_pdf" 
+              color="primary" 
+              label="Exportar PDF" 
+              @click="exportarPdfDni"
+              :loading="loadingPdf"
+            />
+          </div>
 
 
           <TableDynamic v-model:selectedRows="seleccionados" :columns="columnsConsulta" :row="listaActivos"
@@ -381,6 +390,8 @@ import { AxiosAdapter } from 'src/adapters/AxiosAdapter'
 
 import { httpClient } from '../boot/axios'
 
+import { activoService } from 'src/services/activoService'
+
 
 
 const $q = useQuasar()
@@ -422,6 +433,10 @@ const mostrarModalActivos = ref(false)
 const entregaDialog = ref(false)
 
 const tokenTemporal = ref(null)
+
+const loadingPdf = ref(false)
+
+const dniUltimoConsulta = ref('')
 
 const usuarioOtp = ref(null)
 
@@ -655,7 +670,9 @@ const consultarActivos = async () => {
   //}
   listaActivos.value = res.data ?? []
   responsableNombre.value = res.responsable ?? 'Usuario'
-
+  
+  dniUltimoConsulta.value = formConsulta.value.dni
+  
   usuarioOtp.value = {
     id: res.id,
     nombre: res.responsable ?? 'Usuario',
@@ -682,6 +699,45 @@ const consultarActivos = async () => {
 
   }
 
+}
+
+const exportarPdfDni = async () => {
+  if (!dniUltimoConsulta.value) {
+    $q.notify({ type: 'negative', message: 'No hay DNI consultar', position: 'top' })
+    return
+  }
+  
+  try {
+    loadingPdf.value = true
+    
+    let ids = null
+    if (seleccionados.value && seleccionados.value.length > 0) {
+      ids = seleccionados.value.map(a => a.id)
+    }
+    
+    const response = await activoService.exportarPdfDni(dniUltimoConsulta.value, ids)
+    
+    if (!(response instanceof Blob)) {
+      throw new Error('La respuesta no es un Blob válido')
+    }
+    
+    const blob = response
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `activos_${dniUltimoConsulta.value}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    $q.notify({ type: 'positive', message: 'PDF exportado exitosamente', position: 'top' })
+  } catch (error) {
+    console.error('Error al exportar PDF:', error)
+    $q.notify({ type: 'negative', message: error.message || 'Error al exportar PDF', position: 'top' })
+  } finally {
+    loadingPdf.value = false
+  }
 }
 
 </script>

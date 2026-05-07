@@ -44,6 +44,16 @@
                 rounded
             />
             <q-btn icon="how_to_reg" color="primary" label="Declaración de uso" class="q-ma-xs q-px-md" dense rounded/>
+            <q-btn 
+                v-if="isUserSearched" 
+                icon="inventory_2" 
+                color="orange-9" 
+                label="PDF Sin Item" 
+                class="q-ma-xs q-px-md" 
+                dense 
+                rounded
+                @click="handlePdfSinItem"
+            />
         </div>
     </q-card-section>
 </template>
@@ -83,7 +93,7 @@ watch(()=> props.select, (newVal) => {
     select.value=newVal
 })
 
-const emit=defineEmits(['update:search', 'update:oficina', 'update:ubicacion', 'update:user', 'update:movimiento'])
+const emit=defineEmits(['update:search', 'update:oficina', 'update:ubicacion', 'update:user', 'update:movimiento', 'update:pdfSinItem'])
 const emitSearch = debounce((val) => emit('update:search', val), 500)
 const emitOficina = debounce((val) => emit('update:oficina', val), 300)
 const emitUbicacion = debounce((val) => emit('update:ubicacion', val), 300)
@@ -98,6 +108,10 @@ watch(ubicacionLocal, (val) => emitUbicacion(val))
 const handleMovimiento=()=>{
     emitMovimiento()
     //console.log('update movimiento')
+}
+
+const handlePdfSinItem=()=>{
+    emit('update:pdfSinItem')
 }
 watch(searchUserLocal, (val) => {
     if (!val) isUserSearched.value = false

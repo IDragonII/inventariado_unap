@@ -68,6 +68,7 @@
         :select="seleccionados"
         @update:user="buscarUsuario"
         @update:movimiento="realizarMovimiento"
+        @update:pdfSinItem="exportarPdfSinItem"
         :oficina-options="oficinaOptions"
         :ubicacion-options="ubicacionOptions"
       />
@@ -215,6 +216,7 @@ const dialogDelete    = ref(false)
 const enableRow       = ref(null)
 const dialogEnable    = ref(null)
 const userFound = ref(false)
+const userDni = ref(null)
 
 const mode = ref({
   mode: 'create',
@@ -229,6 +231,8 @@ const loadingAll = ref({
   delete: false,
   export: false
 })
+
+const loadingPdfSinItem = ref(false)
 
 // ─── Dialog ──────────────────────────────────────────────────────────────────
 
@@ -347,6 +351,7 @@ const enableItemConfirmation = async () => {
 const buscarUsuario = async (val) => {
   if (!val) {
     userFilter.value = null
+    userDni.value = null
     userFound.value = false
     loadData()
     return
@@ -357,6 +362,7 @@ const buscarUsuario = async (val) => {
 
     if (usuarios.length > 0) {
       userFilter.value = usuarios[0].id
+      userDni.value = usuarios[0].dni
       userFound.value = true
       select.value = []
       $q.notify({ type: 'positive', message: `Usuario encontrado: ${usuarios[0].name}`, position: 'top' })
@@ -562,6 +568,58 @@ const exportarActas = async () => {
   }
 }
 
+// ─── Exportar PDF Sin Item ─────────────────────────────────────────────────
+
+const exportarPdfSinItem = async () => {
+  if (!userDni.value) {
+    $q.notify({ type: 'warning', message: 'Debe buscar un usuario primero', position: 'top' })
+    return
+  }
+
+  try {
+    loadingPdfSinItem.value = true
+
+    let ids = null
+    if (seleccionados.value && seleccionados.value.length > 0) {
+      ids = seleccionados.value.map(r => r.id)
+    }
+
+    const response = await activoService.exportarPdfDniSinItem(userDni.value, ids)
+
+    if (!response || !(response instanceof Blob)) {
+      throw new Error(response?.message || 'Los activos seleccionados ya tienen item asignado')
+    }
+
+    const blob = response
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `activos_sin_item_${userDni.value}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    $q.notify({ type: 'positive', message: 'PDF sin item exportado exitosamente', position: 'top' })
+  } catch (error) {
+    console.error('Error al exportar PDF:', error)
+    let mensaje = 'Error al exportar PDF'
+    try {
+      if (error.response && error.response.data) {
+        mensaje = error.response.data.message || mensaje
+      }
+    } catch (e) {
+      console.warn('Error parsing response:', e)
+    }
+    if (error.message && error.message.length < 50 && !error.message.includes('status')) {
+      mensaje = error.message
+    }
+    $q.notify({ type: 'negative', message: mensaje, position: 'top' })
+  } finally {
+    loadingPdfSinItem.value = false
+  }
+}
+
 // ─── Importar ─────────────────────────────────────────────────────────────────
 
 const fileInputRef = ref(null)
@@ -649,7 +707,7 @@ const onPagination = (newPagination) => {
 
 const columns = [
   { name: 'codigo',       label: 'Código',        field: 'codigo',                             align: 'left',   sortable: true },
-  { name: 'item',         label: 'Item',           field: row => row.id_item ?? 'NULL',         align: 'left',   sortable: true },
+  { name: 'item',         label: 'Item',           field: row => row.id_item ?? 'NULL',         align: 'left' },
   { name: 'denominacion', label: 'Denominación',   field: 'denominacion',                       align: 'left',   sortable: true },
   { name: 'Oficina',      label: 'Oficina',        field: row => row.area?.oficina?.denominacion, align: 'left' },
   { name: 'Área',         label: 'Área',           field: row => row.area?.aula,                align: 'left' },

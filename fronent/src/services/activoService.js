@@ -256,55 +256,51 @@ class ActivoService {
         const response=await this.http.get('auth/activos/reporteSoftwareOTI', {params, responseType: 'blob'})
         return response
     }
+
+    // Consulta por DNI (público)
+    async consultarPorDni(dni, sessionId) {
+        const response = await this.http.post('/activos/consultar-por-dni', {
+            dni: dni,
+            session_id: sessionId
+        })
+        return response
+    }
+
+    async exportarPdfDni(dni, ids = null) {
+        const response = await this.http.post('/activos/consultar-por-dni/pdf', {
+            dni: dni,
+            ids: ids
+        }, { responseType: 'blob' })
+        return response
+    }
+
+    async exportarPdfDniSinItem(dni, ids = null) {
+        try {
+            const response = await this.http.post('/activos/consultar-por-dni/pdf-sin-item', {
+                dni: dni,
+                ids: ids
+            }, { responseType: 'blob' })
+            return response
+        } catch (error) {
+            console.log('Error en exportarPdfDniSinItem:', error)
+            if (error.response && error.response.status === 404) {
+                const data = error.response.data
+                let mensaje = 'Error al exportar PDF'
+                if (data instanceof Blob) {
+                    const text = await data.text()
+                    try {
+                        const json = JSON.parse(text)
+                        mensaje = json.message || 'Los activos seleccionados ya tienen item asignado'
+                    } catch {
+                        mensaje = text || mensaje
+                    }
+                } else if (data && typeof data === 'object') {
+                    mensaje = data.message || 'Los activos seleccionados ya tienen item asignado'
+                }
+                throw new Error(mensaje)
+            }
+            throw error
+        }
+    }
 }
 export const activoService = new ActivoService()
-
-
-    // Mantenimientos y movimientos
-    //getMantenimientos: async (params = {}) => {
-    //    const response = await httpClient.get('/auth/activo/mantenimientos', { params })
-    //    return response.data
-    //},
-
-    //getMovimientos: async (params = {}) => {
-    //    const response = await httpClient.get('/auth/activo/movimientos', { params })
-    //    return response.data
-    //},
-
-    // QR
-    //generateQR: async (id) => {
-    //    const response = await httpClient.get(`/auth/activo/qr/${id}`)
-    //    return response.data
-    //},
-
-    //scanQR: async (data) => {
-    //    const response = await httpClient.post('/auth/qr-scan', data)
-    //    return response.data
-    //},
-
-    // Exportación
-    //exportar: async (type, params = {}) => {
-    //    const response = await httpClient.get(`/auth/export/${type}`, {
-    //        params,
-    //        responseType: 'blob'
-    //    })
-    //    return response.data
-    //},
-
-    // Reportes
-    //getReporteEstado: async (params = {}) => {
-    //    const response = await httpClient.get('/auth/reportes/estado', { params })
-    //    return response.data
-    //},
-
-    //getReporteUbicacion: async (params = {}) => {
-    //    const response = await httpClient.get('/auth/reportes/ubicacion', { params })
-    //    return response.data
-    //},
-
-    //getReporteDepreciacion: async (params = {}) => {
-    //    const response = await httpClient.get('/auth/reportes/depreciacion', { params })
-    //    return response.data
-    //},
-
-    // Categorías y otros datos de referencia

@@ -95,7 +95,14 @@ class ActivosController extends BaseController
                 $search = $request->search;
                 $query->where(function($q) use ($search){
                     $q->orWhere('codigo', 'like', "%{$search}%")
-                      ->orWhere('numero_serie', 'like', "%{$search}%");
+                      ->orWhere('numero_serie', 'like', "%{$search}%")
+                      ->orWhere('denominacion', 'like', "%{$search}%")
+                      ->orWhere('descripcion', 'like', "%{$search}%")
+                      ->orWhere('marca', 'like', "%{$search}%")
+                      ->orWhere('modelo', 'like', "%{$search}%")
+                      ->orWhereHas('responsable', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
                 });
             }
 
@@ -1268,6 +1275,128 @@ public function consultarPorDni(Request $request)
         'data'       => $activos
     ]);
 }
+
+public function consultarPorDniPdf(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'dni'    => 'required|string|size:8',
+        'ids'    => 'nullable|array',
+        'ids.*'  => 'integer'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Datos incorrectos',
+            'errors'  => $validator->errors()
+        ], 422);
+    }
+
+    $user = User::where('dni', $request->dni)->first();
+    if (!$user) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Usuario no encontrado'
+        ], 404);
+    }
+
+    $query = Activo::with(['area.oficina', 'responsable'])
+        ->where('responsable_id', $user->id)
+        ->whereNull('deleted_at');
+
+    if ($request->ids && count($request->ids) > 0) {
+        $query->whereIn('id', $request->ids);
+    }
+
+    $activos = $query->get();
+
+    if ($activos->isEmpty()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No hay activos para exportar'
+        ], 404);
+    }
+
+    $logoPath = public_path('images/Logo_UNAP.png');
+    $logo = file_exists($logoPath)
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+        : null;
+
+    $movimiento = (object) [
+        'fecha_movimiento' => now(),
+    ];
+
+    $pdf = PDF::loadView('pdf.consulta_dni', [
+        'activos'    => $activos,
+        'user'       => $user,
+        'logo'       => $logo,
+        'movimiento' => $movimiento,
+    ]);
+    
+    return $pdf->download('bienes_dni_' . $user->dni . '.pdf');
+}
+
+public function consultarPorDniPdfSinItem(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'dni'    => 'required|string|size:8',
+        'ids'    => 'nullable|array',
+        'ids.*'  => 'integer'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Datos incorrectos',
+            'errors'  => $validator->errors()
+        ], 422);
+    }
+
+    $user = User::where('dni', $request->dni)->first();
+    if (!$user) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Usuario no encontrado'
+        ], 404);
+    }
+
+    $baseQuery = Activo::with(['area.oficina', 'responsable'])
+        ->where('responsable_id', $user->id)
+        ->whereNull('deleted_at');
+
+    if ($request->ids && count($request->ids) > 0) {
+        $baseQuery->whereIn('id', $request->ids);
+    }
+
+    $activos = $baseQuery->get()->filter(function($activo) {
+        $pivotItem = $activo->users()->first()?->pivot?->item;
+        return $pivotItem === null || $pivotItem === '';
+    });
+
+    $logoPath = public_path('images/Logo_UNAP.png');
+    $logo = file_exists($logoPath)
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+        : null;
+
+    $movimiento = (object) [
+        'fecha_movimiento' => now(),
+    ];
+
+    $areas = $activos->pluck('area.aula')->filter()->unique()->values()->implode(', ');
+    $oficinas = $activos->map(fn($a) => $a->area?->oficina?->denominacion)->filter()->unique()->values()->implode(', ');
+
+    $pdf = PDF::loadView('pdf.consulta_dni_sin_item', [
+        'activos'    => $activos,
+        'user'       => $user,
+        'logo'       => $logo,
+        'movimiento' => $movimiento,
+        'area'       => $areas ?: '---',
+        'oficina'    => $oficinas ?: '---',
+    ]);
+    
+    return $pdf->download('bienes_sin_item_' . $user->dni . '.pdf');
+}
+
 public function consultarPorCodigo($codigo)
 {
     $activo = Activo::with(['area.oficina', 'responsable'])

@@ -240,6 +240,8 @@ Route::middleware(['auth:sanctum', 'verified'])->prefix('auth/configuracion')->g
 });
 // Fuera de cualquier middleware group
 Route::post('/activos/consultar-por-dni', [ActivosController::class, 'consultarPorDni']);
+Route::post('/activos/consultar-por-dni/pdf', [ActivosController::class, 'consultarPorDniPdf']);
+Route::post('/activos/consultar-por-dni/pdf-sin-item', [ActivosController::class, 'consultarPorDniPdfSinItem']);
 // OTP (acceso temporal sin login)
 Route::post('/otp/solicitar', [\App\Http\Controllers\Api\OtpController::class, 'solicitar']);
 Route::post('/otp/verificar', [\App\Http\Controllers\Api\OtpController::class, 'verificar']);
