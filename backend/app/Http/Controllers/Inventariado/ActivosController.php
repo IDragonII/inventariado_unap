@@ -1326,11 +1326,17 @@ public function consultarPorDniPdf(Request $request)
         'fecha_movimiento' => now(),
     ];
 
-    $pdf = PDF::loadView('pdf.consulta_dni', [
+    $primerActivo = $activos->first();
+    $areaNombre = $primerActivo?->area?->aula ?? '---';
+    $oficinaNombre = $primerActivo?->area?->oficina?->denominacion ?? '---';
+
+    $pdf = PDF::loadView('pdf.consulta_dni_sin_item', [
         'activos'    => $activos,
         'user'       => $user,
         'logo'       => $logo,
         'movimiento' => $movimiento,
+        'area'       => $areaNombre,
+        'oficina'    => $oficinaNombre,
     ]);
     
     return $pdf->download('bienes_dni_' . $user->dni . '.pdf');
@@ -1368,10 +1374,22 @@ public function consultarPorDniPdfSinItem(Request $request)
         $baseQuery->whereIn('id', $request->ids);
     }
 
-    $activos = $baseQuery->get()->filter(function($activo) {
-        $pivotItem = $activo->users()->first()?->pivot?->item;
-        return $pivotItem === null || $pivotItem === '';
-    });
+    $activos = $baseQuery->get()->map(function($activo) {
+        $pivot = $activo->users()->first()?->pivot;
+        $pivotItem = $pivot?->item;
+        if ($pivotItem === null || $pivotItem === '') {
+            $activo->num_acta = $pivot?->num_acta;
+            $activo->fecha_acta = $pivot?->fecha;
+            return $activo;
+        }
+        return null;
+    })->filter();
+
+    $primerActivo = $activos->first();
+    $areaNombre = $primerActivo?->area?->aula ?? '---';
+    $oficinaNombre = $primerActivo?->area?->oficina?->denominacion ?? '---';
+    $numActa = $primerActivo?->num_acta ?? '';
+    $fechaActa = $primerActivo?->fecha_acta ? \Carbon\Carbon::parse($primerActivo->fecha_acta)->format('d/m/Y') : '';
 
     $logoPath = public_path('images/Logo_UNAP.png');
     $logo = file_exists($logoPath)
@@ -1382,16 +1400,15 @@ public function consultarPorDniPdfSinItem(Request $request)
         'fecha_movimiento' => now(),
     ];
 
-    $areas = $activos->pluck('area.aula')->filter()->unique()->values()->implode(', ');
-    $oficinas = $activos->map(fn($a) => $a->area?->oficina?->denominacion)->filter()->unique()->values()->implode(', ');
-
     $pdf = PDF::loadView('pdf.consulta_dni_sin_item', [
         'activos'    => $activos,
         'user'       => $user,
         'logo'       => $logo,
         'movimiento' => $movimiento,
-        'area'       => $areas ?: '---',
-        'oficina'    => $oficinas ?: '---',
+        'area'       => $areaNombre,
+        'oficina'    => $oficinaNombre,
+        'num_acta'   => $numActa,
+        'fecha_acta' => $fechaActa,
     ]);
     
     return $pdf->download('bienes_sin_item_' . $user->dni . '.pdf');

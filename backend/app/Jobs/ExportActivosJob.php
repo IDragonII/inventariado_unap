@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use OpenSpout\Writer\XLSX\Writer;
 use OpenSpout\Common\Entity\Row;
@@ -82,7 +83,8 @@ class ExportActivosJob implements ShouldQueue
             'piso', 
             'responsable_dni', 'responsable_nombre',
             'telefono', 'declaracion', 
-            'dni_inventariador', 'nombre_inventariador'
+            'dni_inventariador', 'nombre_inventariador',
+            'tipo_acta'
         ];
         
         $writer->addRow(Row::fromValues($headers, $headerStyle));
@@ -118,6 +120,7 @@ class ExportActivosJob implements ShouldQueue
                 $activo->declaracion ?? '',
                 $activo->dniInventariador ?? '',
                 $activo->nombreInventariador ?? '',
+                $this->getTipoActa($activo->id),
             ]));
         }
     }
@@ -136,6 +139,16 @@ class ExportActivosJob implements ShouldQueue
         } catch (\Exception $e) {
             return '';
         }
+    }
+
+    private function getTipoActa(int $activoId): string
+    {
+        $pivot = DB::table('activo_user')
+            ->where('activo_id', $activoId)
+            ->whereNull('deleted_at')
+            ->orderBy('id', 'desc')
+            ->first();
+        return $pivot->origen ?? '';
     }
 
     private function getActivos()

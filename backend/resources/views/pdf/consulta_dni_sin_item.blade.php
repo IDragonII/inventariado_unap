@@ -70,7 +70,7 @@
         .sig-box { text-align: center; width: 50%; padding-top: 4px; }
         .sig-line { border-top: 1px solid #000; width: 70%; margin: 0 auto 4px; }
 
-        /* CONTENIDO - Estilo APA */
+        /* CONTENIDO */
         .title {
             text-align: center;
             font-size: 14px;
@@ -79,20 +79,21 @@
             text-transform: uppercase;
         }
 
-        .info-block {
-            margin-bottom: 15px;
-            text-align: justify;
+        .page-header-info {
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+        .page-header-info p {
+            margin: 2px 0;
         }
         .info-label { font-weight: bold; }
 
         .bienes-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
             font-size: 10px;
         }
         
-        /* Estilo APA: solo líneas horizontales, sin verticales */
         .bienes-table thead tr {
             border-bottom: 2px solid #000;
         }
@@ -119,6 +120,13 @@
             text-align: right;
             font-size: 10px;
         }
+
+        .area-section {
+            page-break-after: always;
+        }
+        .area-section:last-child {
+            page-break-after: auto;
+        }
     </style>
 </head>
 <body>
@@ -128,46 +136,50 @@
     @include('pdf.partials.footerItem')
 
     {{-- CONTENIDO PRINCIPAL --}}
-    <div class="title">CARGO PERSONAL DE BIENES PATRIMONIALES</div>
+    @php
+        $activosPorArea = $activos->groupBy('area.aula');
+        $contadorGlobal = 1;
+    @endphp
 
-    <div class="info-block">
-        <p><span class="info-label">Área:</span> {{ $area }}</p>
-        <p><span class="info-label">Oficina:</span> {{ $oficina }}</p>
-        <p><span class="info-label">Nombre y Apellido:</span> {{ strtoupper($user->name) }}</p>
+    @foreach($activosPorArea as $areaNombre => $areaActivos)
+    <div class="area-section">
+        <div class="title">CARGO PERSONAL DE BIENES PATRIMONIALES</div>
+        <div class="page-header-info">
+            <p><span class="info-label">Oficina:</span> {{ $oficina }}</p>
+            <p><span class="info-label">Nombre y Apellido:</span> {{ strtoupper($user->name) }} - {{ $user->dni }}</p>
+            <p><span class="info-label">Área:</span> {{ $areaNombre }}</p>
+        </div>
+        <table class="bienes-table">
+            <thead>
+                <tr>
+                    <th style="width:5%">N°</th>
+                    <th style="width:10%">Código</th>
+                    <th style="width:18%">Denominación</th>
+                    <th style="width:8%">Marca</th>
+                    <th style="width:8%">Modelo</th>
+                    <th style="width:10%">Serie</th>
+                    <th style="width:31%">Descripción</th>
+                    <th style="width:10%">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($areaActivos as $index => $activo)
+                <tr>
+                    <td>{{ $contadorGlobal++ }}</td>
+                    <td>{{ $activo->codigo }}</td>
+                    <td>{{ $activo->denominacion }}</td>
+                    <td>{{ $activo->marca ?? '-' }}</td>
+                    <td>{{ $activo->modelo ?? '-' }}</td>
+                    <td>{{ $activo->numero_serie ?? '-' }}</td>
+                    <td>{{ $activo->descripcion ?? '-' }}</td>
+                    <td>{{ strtoupper($activo->estado_conservacion ?? 'regular') }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <p style="text-align: right; font-size: 10px; margin-top: 5px;"><strong>Subtotal: {{ $areaActivos->count() }}</strong></p>
     </div>
-
-    <table class="bienes-table">
-        <thead>
-            <tr>
-                <th style="width:5%">N°</th>
-                <th style="width:12%">Código</th>
-                <th style="width:25%">Denominación</th>
-                <th style="width:10%">Marca</th>
-                <th style="width:10%">Modelo</th>
-                <th style="width:12%">Serie</th>
-                <th style="width:15%">Área</th>
-                <th style="width:11%">Estado</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($activos as $index => $activo)
-            <tr>
-                <td>{{ $index + 1 }}</td>
-                <td>{{ $activo->codigo }}</td>
-                <td>{{ $activo->denominacion }}</td>
-                <td>{{ $activo->marca ?? '-' }}</td>
-                <td>{{ $activo->modelo ?? '-' }}</td>
-                <td>{{ $activo->numero_serie ?? '-' }}</td>
-                <td>{{ $activo->area->aula ?? '-' }}</td>
-                <td>{{ strtoupper($activo->estado_conservacion ?? 'regular') }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    <div class="footer-total">
-        <p><strong>Total de activos sin item: {{ count($activos) }}</strong></p>
-    </div>
+    @endforeach
 
 </body>
 </html>

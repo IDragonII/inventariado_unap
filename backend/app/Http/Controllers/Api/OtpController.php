@@ -83,13 +83,23 @@ class OtpController extends Controller
             return response()->json(['message' => 'Código expirado'], 400);
         }
 
-        $otp->delete();
-
         $user = \App\Models\User::where('dni', $request->dni)->first();
 
         if (!$user) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
+
+        if ($user) {
+            if ($request->has('correo') && $request->correo) {
+                $user->email = $request->correo;
+                $user->save();
+            } elseif ($otp->email && !$user->email) {
+                $user->email = $otp->email;
+                $user->save();
+            }
+        }
+
+        $otp->delete();
 
         $user->tokens()->where('name', 'otp-token')->delete();
 

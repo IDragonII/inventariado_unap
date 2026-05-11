@@ -1,6 +1,4 @@
 <style>
-    /* El estilo debe estar aquí para que el partial lo inyecte, 
-       pero sin etiquetas de estructura de página */
     #page-footer {
         position: fixed;
         bottom: -5.5cm; 
@@ -31,11 +29,19 @@
     }
 
     .cc-archivo-box {
-        margin-top: 50px; /* Hueco para el sello */
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        margin-top: 50px;
         font-size: 11px;
         line-height: 1.3;
         text-align: left;
         padding-left: 0;
+    }
+
+    .firma-img {
+        width: 80px;
+        height: auto;
     }
 </style>
 
@@ -50,8 +56,16 @@
         </div>
 
         <div class="cc-archivo-box">
-            C.C.<br>
-            Archivo
+            @php
+                $firmaPath = public_path('images/firma.png');
+            @endphp
+            @if(file_exists($firmaPath))
+                <img src="data:image/png;base64,{{ base64_encode(file_get_contents($firmaPath)) }}" class="firma-img">
+            @endif
+            <div>
+                C.C.<br>
+                Archivo
+            </div>
         </div>
     </div>
 </div>
