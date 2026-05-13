@@ -1596,10 +1596,12 @@ public function importarActivos(Request $request)
                     
                     // Adjuntar a usuario (importado)
                     $user = $request->user();
+                    $yearAdq = !empty($fila['year_adquisicion']) ? (int)$fila['year_adquisicion'] : null;
                     $user->activos()->attach($nuevoActivo->id, [
                         'fecha' => now(),
                         'grupo' => $user->grupo,
-                        'origen' => 'importado'
+                        'origen' => 'importado',
+                        'year_adquisicion' => $yearAdq
                     ]);
                     
                     $resultados['creados']++;

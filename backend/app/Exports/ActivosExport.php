@@ -38,16 +38,17 @@ class ActivosExport implements FromQuery, WithHeadings, WithChunkReading, Should
                 'ofc.denominacion as oficina_denominacion',
                 'ed.codigo as edificio_codigo',
                 'ed.denominacion as edificio_denominacion',
-                'au.grupo',
-                'au.item',
-                'au.fecha'
+                DB::raw("(SELECT grupo FROM activo_user WHERE activo_id = a.id AND deleted_at IS NULL ORDER BY id DESC LIMIT 1) as grupo"),
+                DB::raw("(SELECT item FROM activo_user WHERE activo_id = a.id AND deleted_at IS NULL ORDER BY id DESC LIMIT 1) as item"),
+                DB::raw("(SELECT fecha FROM activo_user WHERE activo_id = a.id AND deleted_at IS NULL ORDER BY id DESC LIMIT 1) as fecha"),
+                DB::raw("(SELECT num_acta FROM activo_user WHERE activo_id = a.id AND deleted_at IS NULL ORDER BY id DESC LIMIT 1) as num_acta"),
+                DB::raw("(SELECT origen FROM activo_user WHERE activo_id = a.id AND deleted_at IS NULL ORDER BY id DESC LIMIT 1) as origen")
             )
             ->join('users as u', 'a.responsable_id', '=', 'u.id')
             ->join('areas as ar', 'a.area_id', '=', 'ar.id')
             ->join('oficinas as ofc', 'ar.oficina_id', '=', 'ofc.id')
             ->join('edificios as ed', 'a.edificio_id', '=', 'ed.id')
-            ->leftJoin('activo_user as au', 'a.id', '=', 'au.activo_id')
-            ->whereNull('au.deleted_at')
+            ->whereNull('a.deleted_at')
             ->orderBy('a.id', 'asc');
     }
     public function map($activo): array
@@ -76,6 +77,8 @@ class ActivosExport implements FromQuery, WithHeadings, WithChunkReading, Should
             $activo->grupo,
             $activo->item,
             $activo->fecha,
+            $activo->num_acta,
+            $activo->origen,
         ];
     }
 
@@ -85,7 +88,8 @@ class ActivosExport implements FromQuery, WithHeadings, WithChunkReading, Should
             'Código', 'Denominación', 'Marca', 'Modelo', 'Número Serie', 'Piso', 'Aula',
             'Descripción', 'Teléfono', 'Inventariador', 'Condición', 'Estado UD',
             'DNI Usuario', 'Nombre Usuario', 'Código Área', 'Aula Área', 'Código Oficina',
-            'Denominación Oficina', 'Código Edificio', 'Edificio', 'Grupo', 'Item', 'Fecha'
+            'Denominación Oficina', 'Código Edificio', 'Edificio', 'Grupo', 'Item', 'Fecha',
+            'Num Acta', 'Origen'
         ];
     }
     

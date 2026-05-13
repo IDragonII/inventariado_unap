@@ -84,7 +84,7 @@ class ExportActivosJob implements ShouldQueue
             'responsable_dni', 'responsable_nombre',
             'telefono', 'declaracion', 
             'dni_inventariador', 'nombre_inventariador',
-            'tipo_acta'
+            'Control_Patrimonial', 'dato_referencia', 'fecha_acta'
         ];
         
         $writer->addRow(Row::fromValues($headers, $headerStyle));
@@ -92,36 +92,51 @@ class ExportActivosJob implements ShouldQueue
         $activos = $this->getActivos();
         
         foreach ($activos->cursor() as $activo) {
-            $writer->addRow(Row::fromValues([
-                $activo->codigo ?? '',
-                $activo->cod_toma ?? '',
-                $activo->denominacion ?? '',
-                $activo->tipo ?? '',
-                $activo->marca ?? '',
-                $activo->modelo ?? '',
-                $activo->numero_serie ?? '',
-                $activo->dimension ?? '',
-                $activo->aula ?? '',
-                $this->getDate($activo->fecha_adquisicion),
-                $this->getCurrency($activo->valor_inicial),
-                $activo->estado ?? '',
-                $activo->condicion ?? '',
-                $activo->descripcion ?? '',
-                $activo->area?->oficina?->codigo ?? '',
-                $activo->area?->oficina?->denominacion ?? '',
-                $activo->area?->codigo ?? '',
-                $activo->area?->aula ?? '',
-                $activo->edificio?->codigo ?? '',
-                $activo->edificio?->denominacion ?? '',
-                $activo->piso ?? '',
-                $activo->responsable?->dni ?? '',
-                $activo->responsable?->name ?? '',
-                $activo->telefono ?? '',
-                $activo->declaracion ?? '',
-                $activo->dniInventariador ?? '',
-                $activo->nombreInventariador ?? '',
-                $this->getTipoActa($activo->id),
-            ]));
+            $pivot = $this->getPivotData($activo->id);
+$controlPatrimonial = match($pivot['origen']) {
+                    'acta' => 'Acta',
+                    'inventariado' => 'Inventario',
+                    'importado' => 'Importado',
+                    default => '',
+                };
+                $datoRef = match($pivot['origen']) {
+                    'acta' => $pivot['num_acta'] ?? '',
+                    'inventariado' => 'inventario',
+                    'importado' => $pivot['year_adquisicion'] ? (string)$pivot['year_adquisicion'] : '',
+                    default => '',
+                };
+                $writer->addRow(Row::fromValues([
+                    $activo->codigo ?? '',
+                    $activo->cod_toma ?? '',
+                    $activo->denominacion ?? '',
+                    $activo->tipo ?? '',
+                    $activo->marca ?? '',
+                    $activo->modelo ?? '',
+                    $activo->numero_serie ?? '',
+                    $activo->dimension ?? '',
+                    $activo->aula ?? '',
+                    $this->getDate($activo->fecha_adquisicion),
+                    $this->getCurrency($activo->valor_inicial),
+                    $activo->estado ?? '',
+                    $activo->condicion ?? '',
+                    $activo->descripcion ?? '',
+                    $activo->area?->oficina?->codigo ?? '',
+                    $activo->area?->oficina?->denominacion ?? '',
+                    $activo->area?->codigo ?? '',
+                    $activo->area?->aula ?? '',
+                    $activo->edificio?->codigo ?? '',
+                    $activo->edificio?->denominacion ?? '',
+                    $activo->piso ?? '',
+                    $activo->responsable?->dni ?? '',
+                    $activo->responsable?->name ?? '',
+                    $activo->telefono ?? '',
+                    $activo->declaracion ?? '',
+                    $activo->dniInventariador ?? '',
+                    $activo->nombreInventariador ?? '',
+                    $controlPatrimonial,
+                    $datoRef,
+                    $pivot['fecha_acta'] ?? '',
+                ]));
         }
     }
     
@@ -141,14 +156,20 @@ class ExportActivosJob implements ShouldQueue
         }
     }
 
-    private function getTipoActa(int $activoId): string
+    private function getPivotData(int $activoId): array
     {
         $pivot = DB::table('activo_user')
             ->where('activo_id', $activoId)
             ->whereNull('deleted_at')
             ->orderBy('id', 'desc')
             ->first();
-        return $pivot->origen ?? '';
+        
+        return [
+            'num_acta' => $pivot ? ($pivot->num_acta ?? '') : '',
+            'fecha_acta' => $pivot && $pivot->fecha ? $this->getDate($pivot->fecha) : '',
+            'origen' => $pivot ? ($pivot->origen ?? '') : '',
+            'year_adquisicion' => $pivot ? ($pivot->year_adquisicion ?? '') : '',
+        ];
     }
 
     private function getActivos()
