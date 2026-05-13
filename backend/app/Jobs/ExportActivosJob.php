@@ -97,12 +97,14 @@ $controlPatrimonial = match($pivot['origen']) {
                     'acta' => 'Acta',
                     'inventariado' => 'Inventario',
                     'importado' => 'Importado',
+                    'regularizacion' => 'Regularización',
                     default => '',
                 };
                 $datoRef = match($pivot['origen']) {
                     'acta' => $pivot['num_acta'] ?? '',
                     'inventariado' => 'inventario',
                     'importado' => $pivot['year_adquisicion'] ? (string)$pivot['year_adquisicion'] : '',
+                    'regularizacion' => $pivot['num_acta'] ?? '',
                     default => '',
                 };
                 $writer->addRow(Row::fromValues([

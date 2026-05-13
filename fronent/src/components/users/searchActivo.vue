@@ -54,6 +54,16 @@
                 rounded
                 @click="handlePdfSinItem"
             />
+            <q-btn 
+                v-if="isUserSearched" 
+                icon="rule" 
+                color="teal" 
+                label="Regularización" 
+                class="q-ma-xs q-px-md" 
+                dense 
+                rounded
+                @click="handleRegularizacion"
+            />
         </div>
     </q-card-section>
 </template>
@@ -93,7 +103,7 @@ watch(()=> props.select, (newVal) => {
     select.value=newVal
 })
 
-const emit=defineEmits(['update:search', 'update:oficina', 'update:ubicacion', 'update:user', 'update:movimiento', 'update:pdfSinItem'])
+const emit=defineEmits(['update:search', 'update:oficina', 'update:ubicacion', 'update:user', 'update:movimiento', 'update:pdfSinItem', 'update:regularizacion'])
 const emitSearch = debounce((val) => emit('update:search', val), 500)
 const emitOficina = debounce((val) => emit('update:oficina', val), 300)
 const emitUbicacion = debounce((val) => emit('update:ubicacion', val), 300)
@@ -112,6 +122,10 @@ const handleMovimiento=()=>{
 
 const handlePdfSinItem=()=>{
     emit('update:pdfSinItem')
+}
+
+const handleRegularizacion=()=>{
+    emit('update:regularizacion')
 }
 watch(searchUserLocal, (val) => {
     if (!val) isUserSearched.value = false

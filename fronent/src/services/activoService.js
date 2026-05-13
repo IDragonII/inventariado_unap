@@ -274,6 +274,29 @@ class ActivoService {
         return response
     }
 
+    async getActivosByUser(dni) {
+        try {
+            const response = await this.http.post('/activos/consultar-por-dni', { dni })
+            return response
+        } catch (error) {
+            console.error('Error:', error)
+            throw error
+        }
+    }
+
+    async regularizacion(datoRef, ids) {
+        try {
+            const response = await this.http.post('/activos/regularizacion', {
+                dato_ref: datoRef,
+                ids: ids
+            })
+            return response
+        } catch (error) {
+            console.error('Error:', error)
+            throw error
+        }
+    }
+
     async exportarPdfDniSinItem(dni, ids = null) {
         try {
             const response = await this.http.post('/activos/consultar-por-dni/pdf-sin-item', {

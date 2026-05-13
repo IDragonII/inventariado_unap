@@ -263,6 +263,10 @@ class ActivosController extends BaseController
                 ->orderBy('id', 'desc')
                 ->first();
             
+            if ($lastRegistro) {
+                DB::table('activo_user')->where('id', $lastRegistro->id)->update(['deleted_at' => now()]);
+            }
+            
             $numActa = null;
             if (!$lastRegistro || !$lastRegistro->num_acta) {
                 $acta = Acta::create([
@@ -373,6 +377,28 @@ class ActivosController extends BaseController
             return $this->handleException($e);
         }
     }
+    private function crearHistorialActivoUser(int $activoId, array $datos, $user = null): void
+    {
+        $last = DB::table('activo_user')
+            ->where('activo_id', $activoId)
+            ->whereNull('deleted_at')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($last) {
+            DB::table('activo_user')->where('id', $last->id)->update(['deleted_at' => now()]);
+        }
+
+        $data = array_merge($datos, [
+            'activo_id' => $activoId,
+            'fecha' => now(),
+            'user_id' => $last ? $last->user_id : ($user ? $user->id : null),
+            'grupo' => $last ? $last->grupo : ($user ? $user->grupo : null),
+        ]);
+
+        DB::table('activo_user')->insert($data);
+    }
+
     public function reporteinventario(Request $request)
     {
         // crear registro de acta con número secuencial de 3 dígitos
@@ -469,11 +495,12 @@ class ActivosController extends BaseController
         ->count();
         $index=1;
         foreach($activos as $activo){
-            DB::table('activo_user')->where('id', $activo->aux_id)->update(['report' => true]);
-            //if(!$activo->item){
-                DB::table('activo_user')->where('id', $activo->aux_id)->update(['item'=>$total+$index]);
-                $index++;
-            //}
+            $this->crearHistorialActivoUser($activo->au_a_id, [
+                'report' => true,
+                'item' => $total + $index,
+                'origen' => 'acta',
+            ], $user);
+            $index++;
         }
         if($activos->isEmpty()){
             return response()->json([
@@ -573,9 +600,12 @@ class ActivosController extends BaseController
             ->count();
             $index=1;
             foreach($activos as $activo){
-                DB::table('activo_user')->where('id', $activo->aux_id)->update(['report' => true]);
-                if(!$activo->item){
-                    DB::table('activo_user')->where('id', $activo->aux_id)->update(['item'=>$total+$index]);
+                if (!$activo->item) {
+                    $this->crearHistorialActivoUser($activo->au_a_id, [
+                        'report' => true,
+                        'item' => $total + $index,
+                        'origen' => 'acta',
+                    ], $user);
                     $index++;
                 }
             }
@@ -739,8 +769,11 @@ class ActivosController extends BaseController
         ->count();
         $index=1;
         foreach($activos as $activo){
-            DB::table('activo_user')->where('id', $activo->aux_id)->update(['report' => true]);
-            DB::table('activo_user')->where('id', $activo->aux_id)->update(['item'=>$total+$index]);
+            $this->crearHistorialActivoUser($activo->activo_id, [
+                'report' => true,
+                'item' => $total + $index,
+                'origen' => 'acta',
+            ], $user);
             $index++;
         }
         if($activos->isEmpty()){
@@ -1102,9 +1135,12 @@ class ActivosController extends BaseController
 
             $index = 1;
             foreach ($activos as $activo) {
-                DB::table('activo_user')->where('id', $activo->aux_id)->update(['report' => true]);
                 if (!$activo->item) {
-                    DB::table('activo_user')->where('id', $activo->aux_id)->update(['item' => $total + $index]);
+                    $this->crearHistorialActivoUser($activo->au_a_id, [
+                        'report' => true,
+                        'item' => $total + $index,
+                        'origen' => 'acta',
+                    ], $user);
                     $index++;
                 }
             }
@@ -1618,11 +1654,64 @@ public function importarActivos(Request $request)
             'data' => $resultados
         ]);
 
-    } catch (\Exception $e) {
-        Log::error('Error en importaci��n: ' . $e->getMessage());
+} catch (\Exception $e) {
+        Log::error('Error en importacin: ' . $e->getMessage());
         return response()->json([
             'success' => false,
             'message' => 'Error al importar: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function regularizacion(Request $request)
+{
+    try {
+        $validated = $request->validate([
+            'dato_ref' => 'required|string',
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:activos,id'
+        ]);
+
+        $user = $request->user();
+
+        $acta = Acta::create([
+            'numero_acta' => $validated['dato_ref']
+        ]);
+
+        foreach ($validated['ids'] as $activoId) {
+            $lastRegistro = DB::table('activo_user')
+                ->where('activo_id', $activoId)
+                ->whereNull('deleted_at')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($lastRegistro) {
+                DB::table('activo_user')->where('id', $lastRegistro->id)->update(['deleted_at' => now()]);
+            }
+
+            $newData = [
+                'fecha' => now(),
+                'origen' => 'regularizacion',
+                'num_acta' => $validated['dato_ref'],
+                'report' => $lastRegistro ? $lastRegistro->report : false,
+                'grupo' => $lastRegistro ? $lastRegistro->grupo : 'DEFAULT',
+                'user_id' => $lastRegistro ? $lastRegistro->user_id : 1,
+                'user_id_two' => $lastRegistro ? $lastRegistro->user_id_two : null,
+                'item' => $lastRegistro ? $lastRegistro->item : null,
+            ];
+
+            DB::table('activo_user')->insert(array_merge($newData, ['activo_id' => $activoId]));
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Regularización aplicada a ' . count($validated['ids']) . ' activo(s)'
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error en regularización: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al regularizar: ' . $e->getMessage()
         ], 500);
     }
 }

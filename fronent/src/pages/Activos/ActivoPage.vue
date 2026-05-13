@@ -69,6 +69,7 @@
         @update:user="buscarUsuario"
         @update:movimiento="realizarMovimiento"
         @update:pdfSinItem="exportarPdfSinItem"
+        @update:regularizacion="handleRegularizacion"
         :oficina-options="oficinaOptions"
         :ubicacion-options="ubicacionOptions"
       />
@@ -174,6 +175,48 @@
       v-model:show="entregaDialog"
       :activos="seleccionados"
     />
+
+    <q-dialog v-model="dialogRegularizacion" persistent>
+      <q-card style="min-width: 600px; max-width: 900px;">
+        <q-card-section class="row items-center">
+          <div class="text-h6">Regularización de Activos</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section style="max-height: 60vh; overflow-y: auto;">
+          <q-input
+            v-model="datoRefRegularizacion"
+            outlined
+            label="Dato de Referencia"
+            placeholder="Ingrese el número de referencia o año"
+            class="q-mb-md"
+          />
+          <q-list bordered separator>
+            <q-item v-for="activo in regularesActivos" :key="activo.id">
+              <q-item-section avatar>
+                <q-icon name="inventory_2" color="teal" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ activo.codigo }}</q-item-label>
+                <q-item-label caption>{{ activo.denominacion }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge :color="activo.estado === 'activo' ? 'positive' : 'grey'" :label="activo.estado" />
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="info" :label="activo.id_item ?? 'S/I'" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="negative" v-close-popup />
+          <q-btn label="Regularizar" color="teal" :loading="loadingRegularizacion" @click="generarActaRegularizacion" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -617,6 +660,46 @@ const exportarPdfSinItem = async () => {
     $q.notify({ type: 'negative', message: mensaje, position: 'top' })
   } finally {
     loadingPdfSinItem.value = false
+  }
+}
+
+const dialogRegularizacion = ref(false)
+const loadingRegularizacion = ref(false)
+const regularesActivos = ref([])
+const datoRefRegularizacion = ref('')
+
+const handleRegularizacion = async () => {
+  loadingRegularizacion.value = true
+  try {
+    if (seleccionados.value && seleccionados.value.length > 0) {
+      regularesActivos.value = seleccionados.value
+    } else {
+      const response = await activoService.getActivosByUser(userDni.value)
+      regularesActivos.value = response.data?.data || response.data || []
+    }
+    dialogRegularizacion.value = true
+  } finally {
+    loadingRegularizacion.value = false
+  }
+}
+
+const generarActaRegularizacion = async () => {
+  if (!datoRefRegularizacion.value) {
+    $q.notify({ type: 'negative', message: 'Ingrese el dato de referencia', position: 'top' })
+    return
+  }
+  loadingRegularizacion.value = true
+  try {
+    const ids = regularesActivos.value.map(a => a.id)
+    const response = await activoService.regularizacion(datoRefRegularizacion.value, ids)
+    $q.notify({ type: 'positive', message: response.message || 'Regularización aplicada', position: 'top' })
+    dialogRegularizacion.value = false
+    loadData()
+  } catch (error) {
+    console.error('Error regularización:', error)
+    $q.notify({ type: 'negative', message: 'Error al regularizar', position: 'top' })
+  } finally {
+    loadingRegularizacion.value = false
   }
 }
 
