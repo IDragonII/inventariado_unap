@@ -116,6 +116,6 @@ class Activo extends Model
     }
     public function users()
     {
-        return $this->belongsToMany(User::class, 'activo_user')->withPivot('id', 'fecha', 'report', 'grupo', 'item', 'user_id_two', 'update_user');
+        return $this->belongsToMany(User::class, 'activo_user')->withPivot('id', 'fecha', 'report', 'grupo', 'item', 'user_id_two', 'update_user', 'num_acta', 'origen', 'year_adquisicion');
     }
 }

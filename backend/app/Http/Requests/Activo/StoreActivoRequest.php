@@ -41,7 +41,8 @@ class StoreActivoRequest extends FormRequest
             'nombreInventariador'=> 'nullable|string',
             'tipo'=>'nullable|string|in:AF,ND,AU',
             'edificio_id'=>'nullable|exists:edificios,id',
-            'telefono'=>'nullable|string'
+            'telefono'=>'nullable|string',
+            'year_adquisicion'=>'nullable|string|min:4|max:4'
         ];
     }
 

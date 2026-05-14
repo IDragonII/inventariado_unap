@@ -61,6 +61,7 @@ class ActivoResource extends JsonResource
             'fecha'=>$this->users->sortByDesc('pivot.id')->first()?->pivot->fecha,
             'cod_toma'=>$this->cod_toma,
             'id_item' => $this->users->sortByDesc('pivot.id')->first()?->pivot->id,
+            'year_adquisicion' => $this->users->sortByDesc('pivot.id')->first()?->pivot->year_adquisicion ?? null,
             //'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             //'updated_at' => $this->updated_at->format('Y-m-d H:i:s')
         ];

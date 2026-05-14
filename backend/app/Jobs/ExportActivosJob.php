@@ -102,7 +102,7 @@ $controlPatrimonial = match($pivot['origen']) {
                 };
                 $datoRef = match($pivot['origen']) {
                     'acta' => $pivot['num_acta'] ?? '',
-                    'inventariado' => 'inventario',
+                    'inventariado' => $pivot['year_adquisicion'] ? (string)$pivot['year_adquisicion'] : '',
                     'importado' => $pivot['year_adquisicion'] ? (string)$pivot['year_adquisicion'] : '',
                     'regularizacion' => $pivot['num_acta'] ?? '',
                     default => '',

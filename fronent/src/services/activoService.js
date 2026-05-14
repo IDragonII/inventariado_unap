@@ -266,14 +266,6 @@ class ActivoService {
         return response
     }
 
-    async exportarPdfDni(dni, ids = null) {
-        const response = await this.http.post('/activos/consultar-por-dni/pdf', {
-            dni: dni,
-            ids: ids
-        }, { responseType: 'blob' })
-        return response
-    }
-
     async getActivosByUser(dni) {
         try {
             const response = await this.http.post('/activos/consultar-por-dni', { dni })
@@ -284,15 +276,29 @@ class ActivoService {
         }
     }
 
-    async regularizacion(datoRef, ids) {
+    async regularizacion(datoRef, ids, fecha = null) {
         try {
             const response = await this.http.post('/activos/regularizacion', {
                 dato_ref: datoRef,
-                ids: ids
+                ids: ids,
+                fecha: fecha
             })
             return response
         } catch (error) {
             console.error('Error:', error)
+            throw error
+        }
+    }
+
+    async exportarPdfDni(dni, ids = null, filtros = null) {
+        try {
+            const body = { dni }
+            if (ids) body.ids = ids
+            if (filtros) body.filtros = filtros
+            const response = await this.http.post('/activos/consultar-por-dni/pdf', body, { responseType: 'blob' })
+            return response
+        } catch (error) {
+            console.error('Error en exportarPdfDni:', error)
             throw error
         }
     }
@@ -305,23 +311,7 @@ class ActivoService {
             }, { responseType: 'blob' })
             return response
         } catch (error) {
-            console.log('Error en exportarPdfDniSinItem:', error)
-            if (error.response && error.response.status === 404) {
-                const data = error.response.data
-                let mensaje = 'Error al exportar PDF'
-                if (data instanceof Blob) {
-                    const text = await data.text()
-                    try {
-                        const json = JSON.parse(text)
-                        mensaje = json.message || 'Los activos seleccionados ya tienen item asignado'
-                    } catch {
-                        mensaje = text || mensaje
-                    }
-                } else if (data && typeof data === 'object') {
-                    mensaje = data.message || 'Los activos seleccionados ya tienen item asignado'
-                }
-                throw new Error(mensaje)
-            }
+            console.error('Error en exportarPdfDniSinItem:', error)
             throw error
         }
     }

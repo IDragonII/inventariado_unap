@@ -192,6 +192,13 @@
             placeholder="Ingrese el número de referencia o año"
             class="q-mb-md"
           />
+          <q-input
+            v-model="fechaRegularizacion"
+            outlined
+            label="Fecha de Regularización"
+            type="date"
+            class="q-mb-md"
+          />
           <q-list bordered separator>
             <q-item v-for="activo in regularesActivos" :key="activo.id">
               <q-item-section avatar>
@@ -297,17 +304,36 @@ const openDialog = async (data, row) => {
   }
 
   if (row) {
+    console.log('row.year_adquisicion:', row.year_adquisicion)
+    console.log('row data:', JSON.stringify(row))
     formData.value = {
-      ...row,
+      id: row.id,
+      codigo: row.codigo,
+      denominacion: { label: row.denominacion, value: row.denominacion },
+      marca: row.marca,
+      modelo: row.modelo,
+      color: row.color,
+      numero_serie: row.numero_serie,
+      dimension: row.dimension,
+      aula: row.aula,
+      tipo: row.tipo,
+      cod_toma: row.cod_toma,
+      fecha_adquisicion: row.fecha_adquisicion,
+      valor_inicial: row.valor_inicial,
       estado: { label: row.estado_display, value: row.estado },
       condicion: { label: row.condicion_display, value: row.condicion },
+      piso: row.piso,
       oficina: row.area?.oficina
         ? { label: row.area.oficina.denominacion, value: row.area.oficina.id }
         : null,
       area: row.area
         ? { label: row.area.aula, value: row.area.id }
         : null,
+      descripcion: row.descripcion,
+      year_adquisicion: row.year_adquisicion || null
     }
+  } else {
+    formData.value = { year_adquisicion: null }
   }
 
   mode.value.show = true
@@ -316,6 +342,8 @@ const openDialog = async (data, row) => {
 const handleSubmit = async () => {
   mode.value.loading = true
   try {
+    console.log('formData.value:', JSON.stringify(formData.value))
+    console.log('year_adquisicion:', formData.value.year_adquisicion)
     const newFormData = {
       ...formData.value,
       area_id:      formData.value.area.value,
@@ -323,7 +351,9 @@ const handleSubmit = async () => {
       denominacion: formData.value.denominacion.label,
       estado:       formData.value.estado.value,
       piso:         formData.value.piso.value,
+      year_adquisicion: formData.value.year_adquisicion || null,
     }
+    console.log('newFormData.year_adquisicion:', newFormData.year_adquisicion)
 
     if (mode.value.mode === 'create') {
       newFormData.fecha_adquisicion = new Date().toISOString().slice(0, 10)
@@ -623,27 +653,36 @@ const exportarPdfSinItem = async () => {
     loadingPdfSinItem.value = true
 
     let ids = null
+    let filtros = null
+
     if (seleccionados.value && seleccionados.value.length > 0) {
       ids = seleccionados.value.map(r => r.id)
+    } else {
+      filtros = {
+        oficina_id:     oficinaFilter.value?.value ?? null,
+        area_id:        ubicacionFilter.value?.value ?? null,
+        search:         searchFilter.value || null,
+        dni:            userDni.value,
+      }
     }
 
-    const response = await activoService.exportarPdfDniSinItem(userDni.value, ids)
+    const response = await activoService.exportarPdfDni(userDni.value, ids, filtros)
 
     if (!response || !(response instanceof Blob)) {
-      throw new Error(response?.message || 'Los activos seleccionados ya tienen item asignado')
+      throw new Error(response?.message || 'Error al exportar PDF')
     }
 
     const blob = response
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `activos_sin_item_${userDni.value}.pdf`)
+    link.setAttribute('download', `activos_${userDni.value}.pdf`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    $q.notify({ type: 'positive', message: 'PDF sin item exportado exitosamente', position: 'top' })
+    $q.notify({ type: 'positive', message: 'PDF exportado exitosamente', position: 'top' })
   } catch (error) {
     console.error('Error al exportar PDF:', error)
     let mensaje = 'Error al exportar PDF'
@@ -667,6 +706,7 @@ const dialogRegularizacion = ref(false)
 const loadingRegularizacion = ref(false)
 const regularesActivos = ref([])
 const datoRefRegularizacion = ref('')
+const fechaRegularizacion = ref(new Date().toISOString().slice(0, 10))
 
 const handleRegularizacion = async () => {
   loadingRegularizacion.value = true
@@ -684,14 +724,14 @@ const handleRegularizacion = async () => {
 }
 
 const generarActaRegularizacion = async () => {
-  if (!datoRefRegularizacion.value) {
-    $q.notify({ type: 'negative', message: 'Ingrese el dato de referencia', position: 'top' })
+  if (!datoRefRegularizacion.value || !fechaRegularizacion.value) {
+    $q.notify({ type: 'negative', message: 'Complete todos los campos', position: 'top' })
     return
   }
   loadingRegularizacion.value = true
   try {
     const ids = regularesActivos.value.map(a => a.id)
-    const response = await activoService.regularizacion(datoRefRegularizacion.value, ids)
+    const response = await activoService.regularizacion(datoRefRegularizacion.value, ids, fechaRegularizacion.value)
     $q.notify({ type: 'positive', message: response.message || 'Regularización aplicada', position: 'top' })
     dialogRegularizacion.value = false
     loadData()
@@ -970,6 +1010,10 @@ const modernFormFields = ref([
     emitvalue: false, mapOptions: true, optionLabel: 'label', optionValue: 'value'
   },
   { type: 'separator', label: 'Información Adicional' },
+  {
+    name: 'year_adquisicion', type: 'text', label: 'Año de Adquisición',
+    placeholder: 'Ej: 2024', prepend: 'calendar_today'
+  },
   {
     name: 'descripcion', type: 'textarea', label: 'Observación',
     placeholder: 'Observación detallada del activo...',

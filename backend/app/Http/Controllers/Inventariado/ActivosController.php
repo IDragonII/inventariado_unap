@@ -17,6 +17,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use App\Models\User;
 use App\Models\Inventariado\Area;
 use App\Models\Edificio;
@@ -253,6 +254,7 @@ class ActivosController extends BaseController
         DB::beginTransaction();
         try {
             $validatedData = $request->validated();
+            Log::info('Update activo - year_adquisicion: ' . ($validatedData['year_adquisicion'] ?? 'NULL'));
             $activo->update($validatedData);
             $user = $request->user();
             $activo->update_user = $user->id;
@@ -277,16 +279,19 @@ class ActivosController extends BaseController
                 $numActa = $lastRegistro->num_acta;
             }
             
-            if ($user->role_id == 5 || $user->role_id == 2) {
-                $user->activos()->attach($activo->id, [
-                    'fecha'=> now(), 
-                    'grupo'=>$user->grupo, 
-                    'user_id_two'=>$request->user_id_two, 
-                    'update_user'=>$user->id,
-                    'num_acta' => $numActa,
-                    'origen' => 'acta'
-                ]);
-            }
+            $origen = ($user->role_id == 5 || $user->role_id == 2) ? 'acta' : 'inventariado';
+            
+            $user->activos()->attach($activo->id, [
+                'fecha'=> now(), 
+                'grupo'=>$user->grupo, 
+                'user_id_two'=>$request->user_id_two, 
+                'update_user'=>$user->id,
+                'num_acta' => $numActa,
+                'origen' => $origen,
+                'year_adquisicion' => $validatedData['year_adquisicion'] ?? null,
+                'item' => $lastRegistro ? $lastRegistro->item : null,
+                'report' => $lastRegistro ? $lastRegistro->report : false,
+            ]);
             $activo->save();
             DB::commit();
             return $this->successResponse(
@@ -499,6 +504,7 @@ class ActivosController extends BaseController
                 'report' => true,
                 'item' => $total + $index,
                 'origen' => 'acta',
+                'num_acta' => $numero_acta->numero_acta,
             ], $user);
             $index++;
         }
@@ -1317,7 +1323,8 @@ public function consultarPorDniPdf(Request $request)
     $validator = Validator::make($request->all(), [
         'dni'    => 'required|string|size:8',
         'ids'    => 'nullable|array',
-        'ids.*'  => 'integer'
+        'ids.*'  => 'integer',
+        'filtros' => 'nullable|array'
     ]);
 
     if ($validator->fails()) {
@@ -1342,6 +1349,22 @@ public function consultarPorDniPdf(Request $request)
 
     if ($request->ids && count($request->ids) > 0) {
         $query->whereIn('id', $request->ids);
+    } elseif ($request->filtros) {
+        $f = $request->filtros;
+        if (!empty($f['search'])) {
+            $query->where(function($q) use ($f) {
+                $q->where('codigo', 'like', '%' . $f['search'] . '%')
+                  ->orWhere('denominacion', 'like', '%' . $f['search'] . '%');
+            });
+        }
+        if (!empty($f['area_id'])) {
+            $query->where('area_id', $f['area_id']);
+        }
+        if (!empty($f['oficina_id'])) {
+            $query->whereHas('area', function($q) use ($f) {
+                $q->where('oficina_id', $f['oficina_id']);
+            });
+        }
     }
 
     $activos = $query->get();
@@ -1669,14 +1692,12 @@ public function regularizacion(Request $request)
         $validated = $request->validate([
             'dato_ref' => 'required|string',
             'ids' => 'required|array',
-            'ids.*' => 'integer|exists:activos,id'
+            'ids.*' => 'integer|exists:activos,id',
+            'fecha' => 'nullable|date'
         ]);
 
         $user = $request->user();
-
-        $acta = Acta::create([
-            'numero_acta' => $validated['dato_ref']
-        ]);
+        $fechaRegistro = $validated['fecha'] ? Carbon::parse($validated['fecha']) : now();
 
         foreach ($validated['ids'] as $activoId) {
             $lastRegistro = DB::table('activo_user')
@@ -1690,7 +1711,7 @@ public function regularizacion(Request $request)
             }
 
             $newData = [
-                'fecha' => now(),
+                'fecha' => $fechaRegistro,
                 'origen' => 'regularizacion',
                 'num_acta' => $validated['dato_ref'],
                 'report' => $lastRegistro ? $lastRegistro->report : false,

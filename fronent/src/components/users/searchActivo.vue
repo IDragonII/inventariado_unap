@@ -48,7 +48,7 @@
                 v-if="isUserSearched" 
                 icon="inventory_2" 
                 color="orange-9" 
-                label="PDF Sin Item" 
+                label="Exportar PDF" 
                 class="q-ma-xs q-px-md" 
                 dense 
                 rounded
@@ -58,7 +58,7 @@
                 v-if="isUserSearched" 
                 icon="rule" 
                 color="teal" 
-                label="Regularización" 
+                label="Seguimiento" 
                 class="q-ma-xs q-px-md" 
                 dense 
                 rounded
