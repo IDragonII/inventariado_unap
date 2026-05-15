@@ -55,7 +55,7 @@
                 @click="handlePdfSinItem"
             />
             <q-btn 
-                v-if="isUserSearched" 
+                v-if="hasItemsNull" 
                 icon="rule" 
                 color="teal" 
                 label="Seguimiento" 
@@ -80,6 +80,7 @@ const props=defineProps({
     select: { type: Array, default: ()=>[]},
     oficinaOptions: {type: Array, default: ()=>[]},
     ubicacionOptions: {type: Array, default: ()=>[]},
+    hasItemsNull: { type: Boolean, default: false },
 })
 const searchLocal = ref(props.search)
 const oficinaLocal = ref(props.oficina)

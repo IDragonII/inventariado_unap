@@ -1693,7 +1693,8 @@ public function regularizacion(Request $request)
             'dato_ref' => 'required|string',
             'ids' => 'required|array',
             'ids.*' => 'integer|exists:activos,id',
-            'fecha' => 'nullable|date'
+            'fecha' => 'nullable|date',
+            'responsable_id' => 'nullable|integer|exists:users,id'
         ]);
 
         $user = $request->user();
@@ -1722,6 +1723,10 @@ public function regularizacion(Request $request)
             ];
 
             DB::table('activo_user')->insert(array_merge($newData, ['activo_id' => $activoId]));
+
+            if (!empty($validated['responsable_id'])) {
+                Activo::where('id', $activoId)->update(['responsable_id' => $validated['responsable_id']]);
+            }
         }
 
         return response()->json([

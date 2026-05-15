@@ -258,6 +258,7 @@ Route::middleware(['auth:sanctum'])->prefix('otp')->group(function () {
         ->middleware('ability:crear-entrega');
     Route::get('/movimientos/{movimiento}/pdf', [MovimientoController::class, 'generarPDF']);
 });
+Route::get('/public/usuarios/buscar', [UsersController::class, 'buscar']);
 Route::get('/activos/consultar-por-codigo/{codigo}', [ActivosController::class, 'consultarPorCodigo']);
 Route::middleware(['auth:sanctum'])->post('/activos/regularizacion', [ActivosController::class, 'regularizacion']);
 Route::get('/{movimiento}/pdf-nuevo', [MovimientoController::class, 'generarPDFNuevo']);

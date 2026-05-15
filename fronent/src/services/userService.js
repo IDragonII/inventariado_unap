@@ -96,6 +96,16 @@ class UserService {
             throw error
         }
     }
+
+    async buscarUsuarios(term) {
+        try {
+            const response = await this.http.get('/public/usuarios/buscar', { params: { dni: term } })
+            return response
+        } catch (error) {
+            console.error('Error al buscar usuarios:', error)
+            throw error
+        }
+    }
 }
 
 export const userService = new UserService() 

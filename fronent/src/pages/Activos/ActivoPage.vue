@@ -66,6 +66,7 @@
         v-model:oficina="oficinaFilter"
         v-model:ubicacion="ubicacionFilter"
         :select="seleccionados"
+        :has-items-null="seleccionados.length > 0 && seleccionados.every(s => !s.id_item)"
         @update:user="buscarUsuario"
         @update:movimiento="realizarMovimiento"
         @update:pdfSinItem="exportarPdfSinItem"
@@ -185,6 +186,28 @@
         </q-card-section>
         <q-separator />
         <q-card-section style="max-height: 60vh; overflow-y: auto;">
+          <div v-if="!hasResponsable" class="q-mb-md q-pa-md bg-orange-1 rounded-borders">
+            <div class="text-subtitle2 q-mb-md text-orange-9">Sin responsable asignado - Seleccione un responsable</div>
+            <q-select
+              v-model="selectedResponsableId"
+              outlined
+              dense
+              label="Responsable"
+              use-input
+              hide-selected
+              fill-input
+              input-debounce="300"
+              :options="responsablesOptions"
+              @filter="searchResponsables"
+              placeholder="Buscar por nombre o DNI"
+            >
+              <template v-slot:no-option>
+                <q-item>
+                  <q-item-section class="text-grey">Sin resultados</q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+          </div>
           <q-input
             v-model="datoRefRegularizacion"
             outlined
@@ -232,7 +255,8 @@ import { useQuasar } from 'quasar'
 import TableDynamic from 'src/components/TableDynamic.vue'
 import SearchActivo from 'src/components/users/searchActivo.vue'
 import { activoService } from 'src/services/activoService'
-import { onMounted, ref, watch } from 'vue'
+import { userService } from 'src/services/userService'
+import { onMounted, ref, watch, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth-store'
 import { useExportStore } from 'src/stores/export-store'
 import { oficinaService } from 'src/services/oficinaService'
@@ -707,6 +731,12 @@ const loadingRegularizacion = ref(false)
 const regularesActivos = ref([])
 const datoRefRegularizacion = ref('')
 const fechaRegularizacion = ref(new Date().toISOString().slice(0, 10))
+const selectedResponsableId = ref(null)
+const responsablesOptions = ref([])
+
+const hasResponsable = computed(() => {
+  return regularesActivos.value.some(a => a.responsable && a.responsable.id)
+})
 
 const handleRegularizacion = async () => {
   loadingRegularizacion.value = true
@@ -718,8 +748,34 @@ const handleRegularizacion = async () => {
       regularesActivos.value = response.data?.data || response.data || []
     }
     dialogRegularizacion.value = true
+    selectedResponsableId.value = null
   } finally {
     loadingRegularizacion.value = false
+  }
+}
+
+const searchResponsables = async (val, update) => {
+  if (!val || val.length < 1) {
+    update(() => { responsablesOptions.value = [] })
+    return
+  }
+  try {
+    const response = await userService.buscarUsuarios(val)
+    let users = []
+    if (Array.isArray(response)) {
+      users = response
+    } else if (response.data) {
+      users = Array.isArray(response.data) ? response.data : response.data.data || []
+    }
+    update(() => {
+      responsablesOptions.value = users.map(u => ({
+        label: `${u.name || ''} - ${u.dni || ''}`,
+        value: u.id
+      }))
+    })
+  } catch (error) {
+    console.error('Error buscando responsables:', error)
+    update(() => { responsablesOptions.value = [] })
   }
 }
 
@@ -728,10 +784,19 @@ const generarActaRegularizacion = async () => {
     $q.notify({ type: 'negative', message: 'Complete todos los campos', position: 'top' })
     return
   }
+  if (!hasResponsable.value && !selectedResponsableId.value) {
+    $q.notify({ type: 'negative', message: 'Seleccione un responsable', position: 'top' })
+    return
+  }
   loadingRegularizacion.value = true
   try {
     const ids = regularesActivos.value.map(a => a.id)
-    const response = await activoService.regularizacion(datoRefRegularizacion.value, ids, fechaRegularizacion.value)
+    let responsableId = null
+    if (!hasResponsable.value && selectedResponsableId.value) {
+      const val = typeof selectedResponsableId.value === 'object' ? selectedResponsableId.value.value : selectedResponsableId.value
+      responsableId = parseInt(val, 10)
+    }
+    const response = await activoService.regularizacion(datoRefRegularizacion.value, ids, fechaRegularizacion.value, responsableId)
     $q.notify({ type: 'positive', message: response.message || 'Regularización aplicada', position: 'top' })
     dialogRegularizacion.value = false
     loadData()

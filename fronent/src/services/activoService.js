@@ -276,13 +276,17 @@ class ActivoService {
         }
     }
 
-    async regularizacion(datoRef, ids, fecha = null) {
+    async regularizacion(datoRef, ids, fecha = null, responsableId = null) {
         try {
-            const response = await this.http.post('/activos/regularizacion', {
+            const body = {
                 dato_ref: datoRef,
                 ids: ids,
                 fecha: fecha
-            })
+            }
+            if (responsableId) {
+                body.responsable_id = responsableId
+            }
+            const response = await this.http.post('/activos/regularizacion', body)
             return response
         } catch (error) {
             console.error('Error:', error)

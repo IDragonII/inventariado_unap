@@ -10,7 +10,7 @@
         <div class="form-fields-container">
           <template v-for="(field, index) in fields" :key="`field-${index}`">
             <!-- Separador -->
-            <div v-if="field.type === 'separator'" class="field-separator"><!-- q-my-md -->
+            <div v-if="field.type === 'separator' && (!field.vIf || formData[field.vIf])" class="field-separator">
               <q-separator :inset="field.inset || false" />
               <div v-if="field.label" class="separator-label q-mt-sm">
                 {{ field.label }}
@@ -18,7 +18,7 @@
             </div>
 
             <!-- Campo personalizado -->
-            <div v-else-if="field.type === 'custom'" :class="'form-field'">
+            <div v-else-if="field.type === 'custom' && (!field.vIf || formData[field.vIf])" :class="'form-field'">
               <slot 
                 :name="`custom-${field.name}`" 
                 :field="field" 
@@ -27,8 +27,8 @@
             </div>
 
             <!-- Campos estándar -->
-            <div v-else :class="'form-field'">
-              <!-- Input de texto, email, password -->
+            <div v-else-if="!field.vIf || formData[field.vIf]" :class="'form-field'">
+              <!-- Input de texto, email, password, checkbox -->
               <q-input
                 v-if="['text', 'email', 'password', 'tel', 'url'].includes(field.type)"
                 v-model="formData[field.name]"
@@ -65,7 +65,6 @@
                   <q-btn icon="search" @click="emitSearch(field.name, formData[field.name])" round flat dense :loading="loadingSearch"/>
                 </template>
               </q-input>
-
               <!-- Input numérico -->
               <q-input
                 v-else-if="field.type === 'number'"
@@ -130,7 +129,7 @@
                 </template>
               </q-select>
 
-              <!-- Checkbox -->
+              <!-- Checkbox (siempre visible) -->
               <q-checkbox
                 v-else-if="field.type === 'checkbox'"
                 v-model="formData[field.name]"
