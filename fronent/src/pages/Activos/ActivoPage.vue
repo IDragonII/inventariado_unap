@@ -665,6 +665,67 @@ const exportarActas = async () => {
   }
 }
 
+// ─── Historial (descargar Excel de movimientos) ──────────────────────────────
+
+const viewHistory = async (row) => {
+  const localId = Date.now()
+  exportStore.agregarExport({
+    id: localId,
+    estado: 'procesando',
+    mensaje: `Preparando historial de ${row.codigo}...`,
+  })
+
+  $q.notify({ type: 'info', message: 'Descargando historial en segundo plano', position: 'top' })
+
+  try {
+    const res = await activoService.exportarHistorialActivo(row.id)
+    const export_id = res.export_id || res.data?.export_id
+
+    if (!export_id) {
+      throw new Error('No se pudo obtener el ID de exportación')
+    }
+
+    const intervalo = setInterval(async () => {
+      try {
+        const status = await activoService.statusExport(export_id)
+        if (!status) return
+
+        if (status.estado === 'completado') {
+          clearInterval(intervalo)
+          exportStore.actualizarExport(localId, {
+            estado: 'completado',
+            mensaje: `Historial listo · ${new Date().toLocaleTimeString()}`,
+            url: status.url,
+            export_id: export_id,
+          })
+          $q.notify({
+            type: 'positive',
+            message: '¡Historial listo! Revisa las notificaciones',
+            position: 'top',
+            icon: 'download',
+          })
+        } else if (status.estado === 'fallido') {
+          clearInterval(intervalo)
+          exportStore.actualizarExport(localId, {
+            estado: 'fallido',
+            mensaje: status.mensaje || 'Error al generar el archivo',
+          })
+          $q.notify({ type: 'negative', message: 'Error al exportar historial', position: 'top' })
+        }
+      } catch (pollError) {
+        console.error('Error en polling:', pollError)
+      }
+    }, 5000)
+  } catch (error) {
+    console.error('ERROR EXPORTAR HISTORIAL:', error)
+    exportStore.actualizarExport(localId, {
+      estado: 'fallido',
+      mensaje: 'Error de conexión o datos inválidos',
+    })
+    $q.notify({ type: 'negative', message: 'No se pudo iniciar la exportación del historial', position: 'top' })
+  }
+}
+
 // ─── Exportar PDF Sin Item ─────────────────────────────────────────────────
 
 const exportarPdfSinItem = async () => {

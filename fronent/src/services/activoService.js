@@ -45,6 +45,11 @@ class ActivoService {
         await this.http.delete(`${this.resource}/exportar/${exportId}`)
     }
 
+    async exportarHistorialActivo(activoId) {
+        const response = await this.http.post(`${this.resource}/${activoId}/exportar-historial`)
+        return response
+    }
+
     async importar(formData) {
         try {
             const response = await this.http.post(`${this.resource}/importar`, formData, {

@@ -31,6 +31,7 @@ use App\Models\Inventariado\Acta;
 use App\Models\Export;
 use App\Jobs\ExportActivosJob;
 use App\Jobs\ExportActasJob;
+use App\Jobs\ExportHistorialActivoJob;
 
 class ActivosController extends BaseController
 {
@@ -1268,6 +1269,20 @@ public function eliminarExport(int $id)
     $export->delete();
 
     return response()->json(['ok' => true]);
+}
+
+public function exportarHistorial(Activo $activo)
+{
+    $export = Export::create([
+        'user_id' => auth()->id(),
+        'estado'  => 'procesando',
+        'filtros' => ['activo_id' => $activo->id],
+        'mensaje' => 'Preparando historial del activo...',
+    ]);
+
+    ExportHistorialActivoJob::dispatch($export->id, $activo->id);
+
+    return response()->json(['export_id' => $export->id], 202);
 }
 public function consultarPorDni(Request $request)
 {

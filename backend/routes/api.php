@@ -122,6 +122,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/exportar/{id}/status', [ActivosController::class, 'statusExport']);
         Route::delete('/exportar/{id}', [ActivosController::class, 'eliminarExport']);
         Route::get('/exportar/historial', [ActivosController::class, 'listarExportaciones']);
+        Route::post('/{activo}/exportar-historial', [ActivosController::class, 'exportarHistorial']);
     });
 
     Route::prefix('auth/catalogobienes')->group(function () {
