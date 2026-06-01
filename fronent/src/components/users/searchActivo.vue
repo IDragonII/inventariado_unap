@@ -33,7 +33,14 @@
             </q-input>
         </div>
         <div class="col flex justify-end">
-            <q-btn 
+            <input
+                ref="fileInputHistorial"
+                type="file"
+                accept=".xlsx,.xls"
+                style="display: none"
+                @change="onFileHistorialSelected"
+            />
+            <q-btn
                 v-if="select && select.length > 0 && isUserSearched" 
                 @click="handleMovimiento" 
                 icon="how_to_reg" 
@@ -44,6 +51,15 @@
                 rounded
             />
             <q-btn icon="how_to_reg" color="primary" label="Declaración de uso" class="q-ma-xs q-px-md" dense rounded/>
+            <q-btn
+                icon="upload_file"
+                color="purple"
+                label="Importar historial"
+                class="q-ma-xs q-px-md"
+                dense
+                rounded
+                @click="handleImportarHistorial"
+            />
             <q-btn 
                 v-if="isUserSearched" 
                 icon="inventory_2" 
@@ -104,7 +120,7 @@ watch(()=> props.select, (newVal) => {
     select.value=newVal
 })
 
-const emit=defineEmits(['update:search', 'update:oficina', 'update:ubicacion', 'update:user', 'update:movimiento', 'update:pdfSinItem', 'update:regularizacion'])
+const emit=defineEmits(['update:search', 'update:oficina', 'update:ubicacion', 'update:user', 'update:movimiento', 'update:pdfSinItem', 'update:regularizacion', 'update:importarHistorial', 'update:historialFile'])
 const emitSearch = debounce((val) => emit('update:search', val), 500)
 const emitOficina = debounce((val) => emit('update:oficina', val), 300)
 const emitUbicacion = debounce((val) => emit('update:ubicacion', val), 300)
@@ -127,6 +143,20 @@ const handlePdfSinItem=()=>{
 
 const handleRegularizacion=()=>{
     emit('update:regularizacion')
+}
+
+const fileInputHistorial = ref(null)
+
+const handleImportarHistorial=()=>{
+    fileInputHistorial.value?.click()
+}
+
+const onFileHistorialSelected=(event)=>{
+    const file = event.target.files?.[0]
+    if (file) {
+        emit('update:historialFile', file)
+    }
+    event.target.value = ''
 }
 watch(searchUserLocal, (val) => {
     if (!val) isUserSearched.value = false

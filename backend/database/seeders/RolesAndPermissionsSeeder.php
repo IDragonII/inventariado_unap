@@ -50,6 +50,11 @@ class RolesAndPermissionsSeeder extends Seeder
             ['name' => 'software.create', 'description' => 'Crear software'],
             ['name' => 'software.edit', 'description' => 'Editar software'],
             ['name' => 'software.delete', 'description' => 'Eliminar software'],
+
+            // Permisos de historial
+            ['name' => 'historial.view', 'description' => 'Ver historial de activos'],
+            ['name' => 'historial.export', 'description' => 'Exportar historial de activos a Excel'],
+            ['name' => 'historial.import', 'description' => 'Importar historial de activos desde Excel'],
         ];
 
         foreach ($permissions as $permission) {
@@ -70,7 +75,8 @@ class RolesAndPermissionsSeeder extends Seeder
                     'usuarios.view', 'usuarios.create', 'usuarios.edit', 'usuarios.delete',
                     'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
                     'reportes.view', 'reportes.export',
-                    'configuracion.view', 'configuracion.edit'
+                    'configuracion.view', 'configuracion.edit',
+                    'historial.view', 'historial.export', 'historial.import'
                 ]
             ],
             [
@@ -82,7 +88,8 @@ class RolesAndPermissionsSeeder extends Seeder
                     'usuarios.view', 'usuarios.create', 'usuarios.edit',
                     'roles.view',
                     'reportes.view', 'reportes.export',
-                    'configuracion.view'
+                    'configuracion.view',
+                    'historial.view', 'historial.export', 'historial.import'
                 ]
             ],
             [
@@ -91,7 +98,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'permissions' => [
                     'activos.view', 'activos.create', 'activos.edit',
                     'movimientos.view', 'movimientos.create', 'movimientos.edit',
-                    'reportes.view', 'reportes.export', 'configuracion.edit'
+                    'reportes.view', 'reportes.export', 'configuracion.edit',
+                    'historial.view', 'historial.export'
                 ]
             ],
             [
@@ -100,7 +108,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'permissions' => [
                     'activos.view',
                     'movimientos.view',
-                    'reportes.view'
+                    'reportes.view',
+                    'historial.view'
                 ]
             ],
             [
@@ -112,7 +121,8 @@ class RolesAndPermissionsSeeder extends Seeder
                     'activos.edit',
                     'usuarios.view',
                     'reportes.view',
-                    'reportes.export'
+                    'reportes.export',
+                    'historial.view', 'historial.export', 'historial.import'
                 ]
             ],
             [
@@ -125,6 +135,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     'reportes.export',
                     'software.view',
                     'roles.view',
+                    'historial.view', 'historial.export'
                 ]
             ],
             [
@@ -133,9 +144,10 @@ class RolesAndPermissionsSeeder extends Seeder
                 'permissions' => [
                     'activos.view',
                     'usuarios.view',
-                    'resportes.view',
+                    'reportes.view',
                     'reportes.export',
-                    'software.view'
+                    'software.view',
+                    'historial.view', 'historial.export'
                 ]
             ]
         ];

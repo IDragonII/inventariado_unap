@@ -50,6 +50,11 @@ class ActivoService {
         return response
     }
 
+    async getHistorialActivo(activoId) {
+        const response = await this.http.get(`${this.resource}/${activoId}/historial-data`)
+        return response
+    }
+
     async importar(formData) {
         try {
             const response = await this.http.post(`${this.resource}/importar`, formData, {

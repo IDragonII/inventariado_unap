@@ -71,6 +71,7 @@
         @update:movimiento="realizarMovimiento"
         @update:pdfSinItem="exportarPdfSinItem"
         @update:regularizacion="handleRegularizacion"
+        @update:historialFile="importarHistorial"
         :oficina-options="oficinaOptions"
         :ubicacion-options="ubicacionOptions"
       />
@@ -247,6 +248,58 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="dialogHistorial">
+      <q-card style="min-width: 1000px; max-width: 1400px;">
+        <q-card-section class="row items-center">
+          <q-icon name="history" color="secondary" size="md" class="q-mr-sm" />
+          <div class="text-h6">Historial del Activo</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <div v-if="historialActivo" class="text-subtitle2 q-mb-sm">
+            <strong>Código:</strong> {{ historialActivo.codigo }} ·
+            <strong>Denominación:</strong> {{ historialActivo.denominacion }}
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-section style="max-height: 60vh; overflow-y: auto;">
+          <q-inner-loading :showing="loadingHistorial">
+            <q-spinner-dots size="50px" color="primary" />
+          </q-inner-loading>
+
+          <div v-if="!loadingHistorial && historialRows.length === 0" class="text-center q-pa-md text-grey">
+            <q-icon name="info" size="40px" />
+            <div class="q-mt-sm">No hay registros de historial para este activo</div>
+          </div>
+
+          <q-table
+            v-if="!loadingHistorial && historialRows.length > 0"
+            :rows="historialRows"
+            :columns="historialColumns"
+            row-key="id"
+            dense
+            flat
+            bordered
+            :rows-per-page-options="[10, 20, 50, 0]"
+            :pagination="{ rowsPerPage: 10 }"
+          />
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right">
+          <q-btn flat label="Cerrar" color="negative" v-close-popup />
+          <q-btn
+            icon="file_download"
+            label="Descargar Excel"
+            color="primary"
+            :loading="downloadingHistorial"
+            :disable="historialRows.length === 0"
+            @click="descargarHistorial"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -255,6 +308,7 @@ import { useQuasar } from 'quasar'
 import TableDynamic from 'src/components/TableDynamic.vue'
 import SearchActivo from 'src/components/users/searchActivo.vue'
 import { activoService } from 'src/services/activoService'
+import { historialService } from 'src/services/historialService'
 import { userService } from 'src/services/userService'
 import { onMounted, ref, watch, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth-store'
@@ -665,17 +719,66 @@ const exportarActas = async () => {
   }
 }
 
-// ─── Historial (descargar Excel de movimientos) ──────────────────────────────
+// ─── Historial (modal con datos + descarga Excel) ────────────────────────────
+
+const dialogHistorial = ref(false)
+const loadingHistorial = ref(false)
+const downloadingHistorial = ref(false)
+const historialActivo = ref(null)
+const historialRows = ref([])
+
+const historialColumns = [
+  { name: 'anio_de_inventario',    label: 'Año',           field: 'anio_de_inventario',    align: 'center', sortable: true },
+  { name: 'codigo_patrimonial',    label: 'Cód. Patrimonial', field: 'codigo_patrimonial', align: 'left' },
+  { name: 'codigo_anterior',       label: 'Cód. Anterior', field: 'codigo_anterior',       align: 'left' },
+  { name: 'descripcion',           label: 'Descripción',   field: 'descripcion',           align: 'left' },
+  { name: 'dni',                   label: 'DNI',           field: 'dni',                   align: 'center' },
+  { name: 'nombre_de_responsable', label: 'Responsable',   field: 'nombre_de_responsable', align: 'left' },
+  { name: 'codigo_oficina',        label: 'Cód. Oficina',  field: 'codigo_oficina',        align: 'center' },
+  { name: 'codigo_area',           label: 'Cód. Área',     field: 'codigo_area',           align: 'center' },
+  { name: 'nombre_oficina',        label: 'Oficina',       field: 'nombre_oficina',        align: 'left' },
+  { name: 'nombre_area',           label: 'Área',          field: 'nombre_area',           align: 'left' },
+  { name: 'toma_hoja',             label: 'Hoja',          field: 'toma_hoja',             align: 'center' },
+  { name: 'toma_orde',             label: 'Orden',         field: 'toma_orde',             align: 'center' },
+  { name: 'marca',                 label: 'Marca',         field: 'marca',                 align: 'left' },
+  { name: 'serie',                 label: 'Serie',         field: 'serie',                 align: 'left' },
+  { name: 'observacion',           label: 'Observación',   field: 'observacion',           align: 'left' },
+  { name: 'estado',                label: 'Estado',        field: 'estado',                align: 'center' },
+]
 
 const viewHistory = async (row) => {
+  historialActivo.value = row
+  historialRows.value = []
+  dialogHistorial.value = true
+  loadingHistorial.value = true
+
+  try {
+    const res = await activoService.getHistorialActivo(row.id)
+    const data = res.data ?? res
+    historialRows.value = Array.isArray(data) ? data : (data.data ?? [])
+  } catch (error) {
+    console.error('ERROR AL CARGAR HISTORIAL:', error)
+    $q.notify({ type: 'negative', message: 'No se pudo cargar el historial del activo', position: 'top' })
+    historialRows.value = []
+  } finally {
+    loadingHistorial.value = false
+  }
+}
+
+const descargarHistorial = async () => {
+  if (!historialActivo.value) return
+
+  downloadingHistorial.value = true
+  const row = historialActivo.value
   const localId = Date.now()
+
   exportStore.agregarExport({
     id: localId,
     estado: 'procesando',
-    mensaje: `Preparando historial de ${row.codigo}...`,
+    mensaje: `Preparando Excel de historial de ${row.codigo}...`,
   })
 
-  $q.notify({ type: 'info', message: 'Descargando historial en segundo plano', position: 'top' })
+  $q.notify({ type: 'info', message: 'Generando Excel en segundo plano...', position: 'top' })
 
   try {
     const res = await activoService.exportarHistorialActivo(row.id)
@@ -723,6 +826,71 @@ const viewHistory = async (row) => {
       mensaje: 'Error de conexión o datos inválidos',
     })
     $q.notify({ type: 'negative', message: 'No se pudo iniciar la exportación del historial', position: 'top' })
+  } finally {
+    downloadingHistorial.value = false
+  }
+}
+
+// ─── Importar Historial (Excel) ──────────────────────────────────────────────
+
+const importarHistorial = async (file) => {
+  const localId = Date.now()
+  exportStore.agregarExport({
+    id: localId,
+    estado: 'procesando',
+    mensaje: `Importando historial desde ${file.name}...`,
+  })
+
+  $q.notify({ type: 'info', message: 'Importación iniciada en segundo plano', position: 'top' })
+
+  try {
+    const res = await historialService.importarHistorial(file)
+    const export_id = res.export_id || res.data?.export_id
+
+    if (!export_id) {
+      throw new Error('No se pudo obtener el ID de importación')
+    }
+
+    const intervalo = setInterval(async () => {
+      try {
+        const status = await historialService.statusImport(export_id)
+        if (!status) return
+
+        if (status.estado === 'completado') {
+          clearInterval(intervalo)
+          const importados = status.filtros?.importados ?? 0
+          const errores = status.filtros?.errores ?? 0
+          exportStore.actualizarExport(localId, {
+            estado: 'completado',
+            mensaje: `Historial importado · ${importados} registros${errores > 0 ? `, ${errores} errores` : ''}`,
+            export_id: export_id,
+          })
+          $q.notify({
+            type: errores > 0 ? 'warning' : 'positive',
+            message: `Importación completada: ${importados} registros${errores > 0 ? `, ${errores} errores` : ''}`,
+            position: 'top',
+            icon: 'check_circle',
+          })
+          await loadData()
+        } else if (status.estado === 'fallido') {
+          clearInterval(intervalo)
+          exportStore.actualizarExport(localId, {
+            estado: 'fallido',
+            mensaje: status.mensaje || 'Error al importar',
+          })
+          $q.notify({ type: 'negative', message: 'Error al importar historial', position: 'top' })
+        }
+      } catch (pollError) {
+        console.error('Error en polling:', pollError)
+      }
+    }, 5000)
+  } catch (error) {
+    console.error('ERROR IMPORTAR HISTORIAL:', error)
+    exportStore.actualizarExport(localId, {
+      estado: 'fallido',
+      mensaje: 'Error de conexión o archivo inválido',
+    })
+    $q.notify({ type: 'negative', message: 'No se pudo iniciar la importación', position: 'top' })
   }
 }
 

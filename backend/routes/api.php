@@ -123,15 +123,15 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::get('/exportar/{id}/status', [ActivosController::class, 'statusExport']);
         Route::delete('/exportar/{id}', [ActivosController::class, 'eliminarExport']);
         Route::get('/exportar/historial', [ActivosController::class, 'listarExportaciones']);
-        Route::post('/{activo}/exportar-historial', [ActivosController::class, 'exportarHistorial']);
-        Route::get('/{activo}/historial-data', [ActivosController::class, 'historialData']);
+        Route::post('/{activo}/exportar-historial', [ActivosController::class, 'exportarHistorial'])->middleware('permission:historial.export');
+        Route::get('/{activo}/historial-data', [ActivosController::class, 'historialData'])->middleware('permission:historial.view');
     });
 
     // Historial (importación por cola)
     Route::prefix('historial')->group(function () {
-        Route::post('/importar', [HistorialController::class, 'importar']);
-        Route::get('/importar/{id}/status', [HistorialController::class, 'statusImport']);
-        Route::delete('/importar/{id}', [HistorialController::class, 'eliminarImport']);
+        Route::post('/importar', [HistorialController::class, 'importar'])->middleware('permission:historial.import');
+        Route::get('/importar/{id}/status', [HistorialController::class, 'statusImport'])->middleware('permission:historial.import');
+        Route::delete('/importar/{id}', [HistorialController::class, 'eliminarImport'])->middleware('permission:historial.import');
     });
 
     Route::prefix('auth/catalogobienes')->group(function () {
