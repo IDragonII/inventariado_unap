@@ -119,41 +119,138 @@ class ImportarHistorialJob implements ShouldQueue
             throw new \Exception("Código patrimonial vacío");
         }
 
-        // Buscar o crear el activo
-        $activo = DB::table('activos')->where('codigo', $codigoPatrimonial)->first();
-        if (!$activo) {
-            $activoId = DB::table('activos')->insertGetId([
-                'codigo'        => $codigoPatrimonial,
-                'cod_toma'      => $codigoAnterior,
-                'denominacion'  => $descripcion,
-                'tipo'          => 'AF',
-                'marca'         => $marca,
-                'numero_serie'  => $serie,
-                'descripcion'   => $observacion,
-                'condicion'     => in_array($estado, ['N', 'B', 'R', 'M']) ? $estado : 'N',
-                'estado'        => 'A',
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-        } else {
-            $activoId = $activo->id;
-        }
+        // ── 1) Buscar o crear oficina (primer nivel) ────────────────────
+        $oficinaId = null;
+        $codigoOficinaTrim = $codigoOficina ? trim((string)$codigoOficina) : '';
+        $nombreOficinaTrim = $nombreOficina ? trim((string)$nombreOficina) : '';
 
-        // Buscar responsable por nombre (no crear)
-        $responsableId = null;
-        if ($nombreResponsable) {
-            $user = DB::table('users')->where('name', $nombreResponsable)->first();
-            if ($user) {
-                $responsableId = $user->id;
+        if ($codigoOficinaTrim !== '') {
+            $oficina = DB::table('oficinas')->where('codigo', $codigoOficinaTrim)->first();
+            if ($oficina) {
+                $oficinaId = $oficina->id;
+            } else {
+                // Crear oficina con el codigo y nombre del Excel
+                $oficinaId = DB::table('oficinas')->insertGetId([
+                    'codigo'       => $codigoOficinaTrim,
+                    'denominacion' => $nombreOficinaTrim !== '' ? $nombreOficinaTrim : $codigoOficinaTrim,
+                    'escuela'      => null,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+        } elseif ($nombreOficinaTrim !== '') {
+            // Sin código: buscar/crear por denominacion
+            $oficina = DB::table('oficinas')->where('denominacion', $nombreOficinaTrim)->first();
+            if ($oficina) {
+                $oficinaId = $oficina->id;
+            } else {
+                $oficinaId = DB::table('oficinas')->insertGetId([
+                    'codigo'       => $nombreOficinaTrim,
+                    'denominacion' => $nombreOficinaTrim,
+                    'escuela'      => null,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
             }
         }
 
-        // Buscar area por nombre (aula) - no crear
+        // ── 2) Buscar o crear área dentro de la oficina ────────────────
         $areaId = null;
-        if ($nombreArea) {
-            $area = DB::table('areas')->where('aula', $nombreArea)->first();
-            if ($area) {
-                $areaId = $area->id;
+        $codigoAreaTrim = $codigoArea ? trim((string)$codigoArea) : '';
+        $nombreAreaTrim = $nombreArea ? trim((string)$nombreArea) : '';
+
+        if ($oficinaId) {
+            if ($codigoAreaTrim !== '') {
+                $area = DB::table('areas')
+                    ->where('oficina_id', $oficinaId)
+                    ->where('codigo', $codigoAreaTrim)
+                    ->first();
+                if ($area) {
+                    $areaId = $area->id;
+                } else {
+                    // Crear área con codigo, aula y oficina_id
+                    $areaId = DB::table('areas')->insertGetId([
+                        'codigo'     => $codigoAreaTrim,
+                        'aula'       => $nombreAreaTrim !== '' ? $nombreAreaTrim : $codigoAreaTrim,
+                        'oficina_id' => $oficinaId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            } elseif ($nombreAreaTrim !== '') {
+                // Sin código: buscar/crear por aula dentro de la oficina
+                $area = DB::table('areas')
+                    ->where('oficina_id', $oficinaId)
+                    ->where('aula', $nombreAreaTrim)
+                    ->first();
+                if ($area) {
+                    $areaId = $area->id;
+                } else {
+                    $areaId = DB::table('areas')->insertGetId([
+                        'codigo'     => $nombreAreaTrim,
+                        'aula'       => $nombreAreaTrim,
+                        'oficina_id' => $oficinaId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        }
+
+        // ── 3) Buscar o crear responsable por DNI ──────────────────────
+        $responsableId = null;
+        $dniTrim = $dni ? trim((string)$dni) : '';
+        $nombreTrim = $nombreResponsable ? trim((string)$nombreResponsable) : '';
+
+        if ($dniTrim !== '') {
+            $user = DB::table('users')->where('dni', $dniTrim)->first();
+            if ($user) {
+                $responsableId = $user->id;
+            } elseif ($nombreTrim !== '') {
+                $responsableId = DB::table('users')->insertGetId([
+                    'name'       => $nombreTrim,
+                    'dni'        => $dniTrim,
+                    'email'      => null,
+                    'password'   => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        // ── 4) Buscar o crear el activo ─────────────────────────────────
+        $activo = DB::table('activos')->where('codigo', $codigoPatrimonial)->first();
+        if (!$activo) {
+            $activoId = DB::table('activos')->insertGetId([
+                'codigo'         => $codigoPatrimonial,
+                'cod_toma'       => $codigoAnterior,
+                'denominacion'   => $descripcion,
+                'tipo'           => 'AF',
+                'marca'          => $marca,
+                'numero_serie'   => $serie,
+                'descripcion'    => $observacion,
+                'condicion'      => in_array($estado, ['N', 'B', 'R', 'M']) ? $estado : 'N',
+                'estado'         => 'A',
+                'area_id'        => $areaId,
+                'responsable_id' => $responsableId,
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+        } else {
+            $activoId = $activo->id;
+            // Actualizar siempre con los datos de esta fila.
+            // El Excel está ordenado ascendente por toma_orde, así que la última fila
+            // procesada es la más actual y sus valores son los que quedan en el activo.
+            $update = [];
+            if ($areaId) {
+                $update['area_id'] = $areaId;
+            }
+            if ($responsableId) {
+                $update['responsable_id'] = $responsableId;
+            }
+            if (!empty($update)) {
+                $update['updated_at'] = now();
+                DB::table('activos')->where('id', $activoId)->update($update);
             }
         }
 
@@ -163,7 +260,7 @@ class ImportarHistorialJob implements ShouldQueue
             $anioInt = (int)$anioInventario;
         }
 
-        // Insertar en historial
+        // ── 5) Insertar en historial ────────────────────────────────────
         DB::table('historial')->insert([
             'activo_id'              => $activoId,
             'anio_de_inventario'     => $anioInt,
