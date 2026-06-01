@@ -1284,6 +1284,20 @@ public function exportarHistorial(Activo $activo)
 
     return response()->json(['export_id' => $export->id], 202);
 }
+
+public function historialData(Activo $activo)
+{
+    $registros = DB::table('historial')
+        ->where('activo_id', $activo->id)
+        ->orderBy('anio_de_inventario', 'asc')
+        ->orderBy('id', 'asc')
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'data'    => $registros,
+    ]);
+}
 public function consultarPorDni(Request $request)
 {
     $validator = Validator::make($request->all(), [

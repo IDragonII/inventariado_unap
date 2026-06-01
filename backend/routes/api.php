@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Inventariado\EdificioController;
 use App\Http\Controllers\Inventariado\ConfiguracionController;
 use App\Http\Controllers\Api\OtpController;
+use App\Http\Controllers\Inventariado\HistorialController;
 
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('auth.register');
@@ -123,6 +124,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         Route::delete('/exportar/{id}', [ActivosController::class, 'eliminarExport']);
         Route::get('/exportar/historial', [ActivosController::class, 'listarExportaciones']);
         Route::post('/{activo}/exportar-historial', [ActivosController::class, 'exportarHistorial']);
+        Route::get('/{activo}/historial-data', [ActivosController::class, 'historialData']);
+    });
+
+    // Historial (importación por cola)
+    Route::prefix('historial')->group(function () {
+        Route::post('/importar', [HistorialController::class, 'importar']);
+        Route::get('/importar/{id}/status', [HistorialController::class, 'statusImport']);
+        Route::delete('/importar/{id}', [HistorialController::class, 'eliminarImport']);
     });
 
     Route::prefix('auth/catalogobienes')->group(function () {

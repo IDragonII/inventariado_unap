@@ -11,7 +11,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -172,11 +171,9 @@ class ExportHistorialActivoJob implements ShouldQueue
 
     private function buildData($sheet): void
     {
-        $activo = DB::table('activos')->where('id', $this->activoId)->first();
-        if (!$activo) return;
-
-        $registros = DB::table('activo_user')
+        $registros = DB::table('historial')
             ->where('activo_id', $this->activoId)
+            ->orderBy('anio_de_inventario', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
@@ -199,39 +196,23 @@ class ExportHistorialActivoJob implements ShouldQueue
         ];
 
         foreach ($registros as $registro) {
-            $usuario = DB::table('users')->where('id', $registro->user_id)->first();
-            $area    = DB::table('areas')->where('id', $activo->area_id)->first();
-            $oficina = null;
-            if ($area) {
-                $oficina = DB::table('oficinas')->where('id', $area->oficina_id)->first();
-            }
-
-            $year = $registro->year_adquisicion ?? $activo->fecha_adquisicion ?? '';
-            if ($year && strlen($year) > 4) {
-                try {
-                    $year = Carbon::parse($year)->format('Y');
-                } catch (\Exception $e) {
-                    $year = substr($year, 0, 4);
-                }
-            }
-
             $sheet->fromArray([
-                $year,
-                $activo->codigo          ?? '',
-                $activo->cod_toma        ?? '',
-                $activo->denominacion    ?? '',
-                $usuario ? $usuario->dni  : '',
-                $usuario ? $usuario->name : '',
-                $oficina ? $oficina->codigo       : '',
-                $area    ? $area->codigo           : '',
-                $oficina ? $oficina->denominacion  : '',
-                $area    ? $area->aula             : '',
-                $registro->item  ?? '',
-                $registro->grupo ?? '',
-                $activo->marca        ?? '',
-                $activo->numero_serie  ?? '',
-                $activo->descripcion  ?? '',
-                $activo->condicion    ?? '',
+                $registro->anio_de_inventario    ?? '',
+                $registro->codigo_patrimonial    ?? '',
+                $registro->codigo_anterior       ?? '',
+                $registro->descripcion           ?? '',
+                $registro->dni                   ?? '',
+                $registro->nombre_de_responsable ?? '',
+                $registro->codigo_oficina        ?? '',
+                $registro->codigo_area           ?? '',
+                $registro->nombre_oficina        ?? '',
+                $registro->nombre_area           ?? '',
+                $registro->toma_hoja             ?? '',
+                $registro->toma_orde             ?? '',
+                $registro->marca                 ?? '',
+                $registro->serie                 ?? '',
+                $registro->observacion           ?? '',
+                $registro->estado                ?? '',
             ], null, "A{$fila}");
 
             $sheet->getStyle("A{$fila}:P{$fila}")->applyFromArray($dataStyle);

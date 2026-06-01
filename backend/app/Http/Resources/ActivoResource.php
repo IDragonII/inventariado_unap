@@ -24,7 +24,7 @@ class ActivoResource extends JsonResource
             'dimension'=>$this->dimension,
             'aula'=>$this->aula,
             'color' => $this->color,
-            'fecha_adquisicion' => $this->fecha_adquisicion->format('Y-m-d'),
+            'fecha_adquisicion' => $this->fecha_adquisicion ? $this->fecha_adquisicion->format('Y-m-d') : null,
             'valor_inicial' => (float) $this->valor_inicial,
             'estado' => $this->estado,
             'estado_display' => $this->getEstadoDisplay(),
