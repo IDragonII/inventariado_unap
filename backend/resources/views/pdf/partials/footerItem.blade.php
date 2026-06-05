@@ -32,15 +32,15 @@
         display: flex;
         align-items: flex-end;
         gap: 10px;
-        margin-top: 50px;
-        font-size: 11px;
+        margin-top: 10px;
+        font-size: 15px;
         line-height: 1.3;
         text-align: left;
         padding-left: 0;
     }
 
     .firma-img {
-        width: 80px;
+        width: 180px;
         height: auto;
     }
 </style>
