@@ -52,6 +52,7 @@
             />
             <q-btn icon="how_to_reg" color="primary" label="Declaración de uso" class="q-ma-xs q-px-md" dense rounded/>
             <q-btn
+                v-if="auth.isAdmin"
                 icon="upload_file"
                 color="purple"
                 label="Importar historial"
@@ -87,6 +88,8 @@
 <script setup>
 import { debounce } from 'lodash'
 import { ref, watch } from 'vue'
+import { useAuthStore } from 'src/stores/auth-store'
+const auth = useAuthStore()
 
 const props=defineProps({
     search: { type: String, default: '' },
